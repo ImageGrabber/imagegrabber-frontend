@@ -10,7 +10,6 @@ interface Props {
 
 export default function HeroSection({ isLoading, onScrape }: Props) {
   const [url, setUrl] = useState('');
-  const [activeTab, setActiveTab] = useState('single');
 
   const handleExtract = () => {
     if (!url.trim()) return;
@@ -25,45 +24,18 @@ export default function HeroSection({ isLoading, onScrape }: Props) {
 
   return (
     <section className="relative min-h-[600px] pt-20 pb-16">
-      <div className="absolute inset-0 bg-black/20"></div>
-      
       <div className="relative mx-auto max-w-7xl px-4 text-center">
         <div className="mb-12 pt-16">
           <h1 className="text-5xl md:text-6xl font-bold text-white mb-4">
             Extract images
           </h1>
           <p className="text-xl text-blue-100 max-w-2xl mx-auto">
-            from any public website
+            from any public specific url
           </p>
         </div>
 
         <div className="mx-auto max-w-4xl">
           <div className="rounded-3xl bg-white p-8 shadow-2xl">
-            <div className="mb-8 flex items-center justify-center">
-              <div className="flex rounded-xl bg-gray-100 p-1">
-                <button
-                  onClick={() => setActiveTab('single')}
-                  className={`rounded-lg px-6 py-3 text-sm font-medium transition-all ${
-                    activeTab === 'single'
-                      ? 'bg-white text-gray-900 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  Single Site
-                </button>
-                <button
-                  onClick={() => setActiveTab('multiple')}
-                  className={`rounded-lg px-6 py-3 text-sm font-medium transition-all ${
-                    activeTab === 'multiple'
-                      ? 'bg-white text-gray-900 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  Multiple Sites
-                </button>
-              </div>
-            </div>
-
             <div className="space-y-4">
               <div className="flex items-center gap-4 rounded-2xl border-2 border-gray-200 bg-gray-50 p-2 focus-within:border-orange-500 focus-within:bg-white">
                 <div className="flex items-center pl-4">

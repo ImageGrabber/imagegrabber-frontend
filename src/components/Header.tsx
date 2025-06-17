@@ -22,8 +22,11 @@ export default function Header() {
 
           {/* Center Navigation */}
           <nav className="hidden md:flex items-center gap-8">
-            <Link href="#" className="text-sm font-medium text-orange-600 hover:text-orange-700 transition-colors">
+            <Link href="/" className="text-sm font-medium text-orange-600 hover:text-orange-700 transition-colors">
               Extract
+            </Link>
+            <Link href="/about" className="text-sm text-gray-600 hover:text-gray-900 transition-colors">
+              About
             </Link>
             <Link href="#" className="text-sm text-gray-600 hover:text-gray-900 transition-colors">
               API

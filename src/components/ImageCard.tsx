@@ -69,10 +69,45 @@ export default function ImageCard({ image, onDownload }: ImageCardProps) {
         </div>
       </div>
 
-      {/* Filename */}
+      {/* Filename and metadata */}
       <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4">
-        <p className="truncate text-sm text-white">{image.filename}</p>
+        <p className="truncate text-sm text-white font-medium">{image.filename}</p>
+        <div className="flex flex-wrap gap-2 mt-1 text-xs text-gray-300">
+          {image.type && (
+            <span className="bg-black/30 px-2 py-0.5 rounded">
+              {image.type.split('/')[1].toUpperCase()}
+            </span>
+          )}
+          {image.width && image.height && (
+            <span className="bg-black/30 px-2 py-0.5 rounded">
+              {image.width}×{image.height}
+            </span>
+          )}
+          {image.size && (
+            <span className="bg-black/30 px-2 py-0.5 rounded">
+              {formatFileSize(image.size)}
+            </span>
+          )}
+          {image.quality && (
+            <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+              image.quality === 'high' ? 'bg-green-500/80 text-white' :
+              image.quality === 'medium' ? 'bg-yellow-500/80 text-white' :
+              'bg-red-500/80 text-white'
+            }`}>
+              {image.quality.toUpperCase()}
+            </span>
+          )}
+        </div>
       </div>
     </div>
   );
+}
+
+/* Helper function to format file size */
+function formatFileSize(bytes: number): string {
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
 } 
