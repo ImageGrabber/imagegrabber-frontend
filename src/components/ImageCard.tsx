@@ -12,9 +12,10 @@ interface ImageCardProps {
   isSelected?: boolean;
   onAuthRequired?: () => void;
   onShowResult?: (result: { type: 'success' | 'error'; title: string; message: string }) => void;
+  onImageClick?: (image: Image) => void;
 }
 
-export default function ImageCard({ image, onDownload, onSelect, isSelected = false, onAuthRequired, onShowResult }: ImageCardProps) {
+export default function ImageCard({ image, onDownload, onSelect, isSelected = false, onAuthRequired, onShowResult, onImageClick }: ImageCardProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(false);
   const [isWordPressPushing, setIsWordPressPushing] = useState(false);
@@ -179,7 +180,10 @@ export default function ImageCard({ image, onDownload, onSelect, isSelected = fa
         )}
 
         {/* Image */}
-        <div className="aspect-square w-full overflow-hidden">
+        <div 
+          className="aspect-square w-full overflow-hidden cursor-pointer"
+          onClick={() => onImageClick?.(image)}
+        >
           <img
             src={image.url}
             alt={image.filename}

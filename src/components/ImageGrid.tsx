@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { Image } from '@/app/page';
 import ImageCard from './ImageCard';
+import ImageViewerModal from './ImageViewerModal';
+import Notification from './Notification';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 
@@ -28,10 +30,34 @@ export default function ImageGrid({ images, onDownload, onAuthRequired }: ImageG
   const [showProgressDialog, setShowProgressDialog] = useState(false);
   const [progressInfo, setProgressInfo] = useState<ProgressInfo | null>(null);
   const [resultMessage, setResultMessage] = useState<{ type: 'success' | 'error'; title: string; message: string } | null>(null);
+  const [selectedImage, setSelectedImage] = useState<Image | null>(null);
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [showNotification, setShowNotification] = useState(false);
+  const [notificationData, setNotificationData] = useState<{ type: 'success' | 'error'; title: string; message: string } | null>(null);
   const { user } = useAuth();
 
   // Create unique identifier for each image to fix duplicate selection issue
   const getImageId = (image: Image, index: number) => `${index}-${image.url}`;
+
+  const handleImageClick = (image: Image) => {
+    setSelectedImage(image);
+    setShowImageModal(true);
+  };
+
+  const handleCloseModal = () => {
+    setShowImageModal(false);
+    setSelectedImage(null);
+  };
+
+  const handleShowResult = (result: { type: 'success' | 'error'; title: string; message: string }) => {
+    setNotificationData(result);
+    setShowNotification(true);
+  };
+
+  const handleCloseNotification = () => {
+    setShowNotification(false);
+    setNotificationData(null);
+  };
 
   const handleSelect = (image: Image, index: number, selected: boolean) => {
     const imageId = getImageId(image, index);
@@ -425,6 +451,7 @@ export default function ImageGrid({ images, onDownload, onAuthRequired }: ImageG
                 setResultMessage(result);
                 setShowResultDialog(true);
               }}
+              onImageClick={handleImageClick}
             />
           </div>
         ))}
@@ -533,6 +560,29 @@ export default function ImageGrid({ images, onDownload, onAuthRequired }: ImageG
             </div>
           </div>
         </div>
+      )}
+
+      {/* Image Viewer Modal */}
+      {selectedImage && (
+        <ImageViewerModal
+          image={selectedImage}
+          isOpen={showImageModal}
+          onClose={handleCloseModal}
+          onDownload={onDownload}
+          onAuthRequired={onAuthRequired}
+          onShowResult={handleShowResult}
+        />
+      )}
+
+      {/* Notification */}
+      {notificationData && (
+        <Notification
+          type={notificationData.type}
+          title={notificationData.title}
+          message={notificationData.message}
+          isVisible={showNotification}
+          onClose={handleCloseNotification}
+        />
       )}
     </div>
   );
