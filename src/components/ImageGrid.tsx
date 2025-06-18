@@ -12,11 +12,21 @@ interface ImageGridProps {
   onAuthRequired?: () => void;
 }
 
+interface ProgressInfo {
+  platform: string;
+  currentIndex: number;
+  totalImages: number;
+  currentImage: Image;
+  status: string;
+}
+
 export default function ImageGrid({ images, onDownload, onAuthRequired }: ImageGridProps) {
   const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set());
   const [isWordPressPushing, setIsWordPressPushing] = useState(false);
   const [isShopifyPushing, setIsShopifyPushing] = useState(false);
   const [showResultDialog, setShowResultDialog] = useState(false);
+  const [showProgressDialog, setShowProgressDialog] = useState(false);
+  const [progressInfo, setProgressInfo] = useState<ProgressInfo | null>(null);
   const [resultMessage, setResultMessage] = useState<{ type: 'success' | 'error'; title: string; message: string } | null>(null);
   const { user } = useAuth();
 
@@ -54,9 +64,20 @@ export default function ImageGrid({ images, onDownload, onAuthRequired }: ImageG
     const selectedImagesList = images.filter((img, index) => 
       selectedImages.has(getImageId(img, index))
     );
+
+    // Show progress dialog
+    setShowProgressDialog(true);
     
     try {
       // Get the user's session token
+      setProgressInfo({
+        platform: 'WordPress',
+        currentIndex: 0,
+        totalImages: selectedImagesList.length,
+        currentImage: selectedImagesList[0],
+        status: 'Authenticating...'
+      });
+
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) {
         throw new Error('No valid session found');
@@ -68,7 +89,17 @@ export default function ImageGrid({ images, onDownload, onAuthRequired }: ImageG
       let errorCount = 0;
       let lastError = null;
 
-      for (const image of selectedImagesList) {
+      for (let i = 0; i < selectedImagesList.length; i++) {
+        const image = selectedImagesList[i];
+        
+        setProgressInfo({
+          platform: 'WordPress',
+          currentIndex: i + 1,
+          totalImages: selectedImagesList.length,
+          currentImage: image,
+          status: `Uploading "${image.filename}"...`
+        });
+
         try {
           const response = await fetch('/api/push/wordpress', {
             method: 'POST',
@@ -88,6 +119,15 @@ export default function ImageGrid({ images, onDownload, onAuthRequired }: ImageG
           results.push(result);
           successCount++;
           
+          // Update progress with success
+          setProgressInfo({
+            platform: 'WordPress',
+            currentIndex: i + 1,
+            totalImages: selectedImagesList.length,
+            currentImage: image,
+            status: `✓ "${image.filename}" uploaded successfully`
+          });
+          
           // Add a small delay between uploads to be nice to WordPress
           await new Promise(resolve => setTimeout(resolve, 500));
           
@@ -95,8 +135,22 @@ export default function ImageGrid({ images, onDownload, onAuthRequired }: ImageG
           errorCount++;
           lastError = error;
           console.error(`Failed to push ${image.filename}:`, error);
+          
+          // Update progress with error
+          setProgressInfo({
+            platform: 'WordPress',
+            currentIndex: i + 1,
+            totalImages: selectedImagesList.length,
+            currentImage: image,
+            status: `✗ Failed to upload "${image.filename}"`
+          });
+          
+          await new Promise(resolve => setTimeout(resolve, 500));
         }
       }
+      
+      // Hide progress dialog
+      setShowProgressDialog(false);
       
       // Show result dialog based on outcomes
       if (errorCount === 0) {
@@ -128,7 +182,8 @@ export default function ImageGrid({ images, onDownload, onAuthRequired }: ImageG
         // Don't clear selection so user can retry failed ones
       }
     } catch (error) {
-      // Show error dialog
+      // Hide progress dialog and show error dialog
+      setShowProgressDialog(false);
       setResultMessage({
         type: 'error',
         title: 'WordPress Push Failed',
@@ -137,6 +192,7 @@ export default function ImageGrid({ images, onDownload, onAuthRequired }: ImageG
       setShowResultDialog(true);
     } finally {
       setIsWordPressPushing(false);
+      setProgressInfo(null);
     }
   };
 
@@ -150,9 +206,20 @@ export default function ImageGrid({ images, onDownload, onAuthRequired }: ImageG
     const selectedImagesList = images.filter((img, index) => 
       selectedImages.has(getImageId(img, index))
     );
+
+    // Show progress dialog
+    setShowProgressDialog(true);
     
     try {
       // Get the user's session token
+      setProgressInfo({
+        platform: 'Shopify',
+        currentIndex: 0,
+        totalImages: selectedImagesList.length,
+        currentImage: selectedImagesList[0],
+        status: 'Authenticating...'
+      });
+
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) {
         throw new Error('No valid session found');
@@ -164,7 +231,17 @@ export default function ImageGrid({ images, onDownload, onAuthRequired }: ImageG
       let errorCount = 0;
       let lastError = null;
 
-      for (const image of selectedImagesList) {
+      for (let i = 0; i < selectedImagesList.length; i++) {
+        const image = selectedImagesList[i];
+        
+        setProgressInfo({
+          platform: 'Shopify',
+          currentIndex: i + 1,
+          totalImages: selectedImagesList.length,
+          currentImage: image,
+          status: `Uploading "${image.filename}"...`
+        });
+
         try {
           const response = await fetch('/api/push/shopify', {
             method: 'POST',
@@ -184,6 +261,15 @@ export default function ImageGrid({ images, onDownload, onAuthRequired }: ImageG
           results.push(result);
           successCount++;
           
+          // Update progress with success
+          setProgressInfo({
+            platform: 'Shopify',
+            currentIndex: i + 1,
+            totalImages: selectedImagesList.length,
+            currentImage: image,
+            status: `✓ "${image.filename}" uploaded successfully`
+          });
+          
           // Add a small delay between uploads to be nice to Shopify
           await new Promise(resolve => setTimeout(resolve, 500));
           
@@ -191,8 +277,22 @@ export default function ImageGrid({ images, onDownload, onAuthRequired }: ImageG
           errorCount++;
           lastError = error;
           console.error(`Failed to push ${image.filename}:`, error);
+          
+          // Update progress with error
+          setProgressInfo({
+            platform: 'Shopify',
+            currentIndex: i + 1,
+            totalImages: selectedImagesList.length,
+            currentImage: image,
+            status: `✗ Failed to upload "${image.filename}"`
+          });
+          
+          await new Promise(resolve => setTimeout(resolve, 500));
         }
       }
+      
+      // Hide progress dialog
+      setShowProgressDialog(false);
       
       // Show result dialog based on outcomes
       if (errorCount === 0) {
@@ -224,7 +324,8 @@ export default function ImageGrid({ images, onDownload, onAuthRequired }: ImageG
         // Don't clear selection so user can retry failed ones
       }
     } catch (error) {
-      // Show error dialog
+      // Hide progress dialog and show error dialog
+      setShowProgressDialog(false);
       setResultMessage({
         type: 'error',
         title: 'Shopify Push Failed',
@@ -233,6 +334,7 @@ export default function ImageGrid({ images, onDownload, onAuthRequired }: ImageG
       setShowResultDialog(true);
     } finally {
       setIsShopifyPushing(false);
+      setProgressInfo(null);
     }
   };
 
@@ -328,6 +430,69 @@ export default function ImageGrid({ images, onDownload, onAuthRequired }: ImageG
         ))}
       </div>
 
+      {/* Progress Dialog */}
+      {showProgressDialog && progressInfo && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                <div className="w-4 h-4 animate-spin rounded-full border-2 border-blue-600 border-t-transparent"></div>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">
+                Uploading to {progressInfo.platform}
+              </h3>
+            </div>
+            
+            <div className="space-y-4">
+              {/* Overall Progress */}
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Progress</span>
+                  <span className="text-gray-900 font-medium">
+                    {progressInfo.currentIndex} of {progressInfo.totalImages}
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div 
+                    className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                    style={{width: `${(progressInfo.currentIndex / progressInfo.totalImages) * 100}%`}}
+                  ></div>
+                </div>
+              </div>
+
+              {/* Current Image */}
+              <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                <img 
+                  src={progressInfo.currentImage.url} 
+                  alt={progressInfo.currentImage.filename}
+                  className="w-12 h-12 rounded object-cover"
+                />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900 truncate">
+                    {progressInfo.currentImage.filename}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {formatFileSize(progressInfo.currentImage.size || 0)}
+                  </p>
+                </div>
+              </div>
+              
+              {/* Status */}
+              <div className="space-y-2">
+                <p className="text-sm text-gray-600">
+                  {progressInfo.status}
+                </p>
+                {progressInfo.status.includes('Uploading') && (
+                  <div className="w-full bg-gray-200 rounded-full h-1">
+                    <div className="bg-blue-600 h-1 rounded-full animate-pulse" style={{width: '60%'}}></div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Result Dialog */}
       {showResultDialog && resultMessage && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
@@ -371,4 +536,12 @@ export default function ImageGrid({ images, onDownload, onAuthRequired }: ImageG
       )}
     </div>
   );
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 } 
