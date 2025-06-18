@@ -50,7 +50,7 @@ export default function HeroSection({ isLoading, onScrape }: Props) {
             Extract images
           </h1>
           <p className="text-xl text-blue-100 max-w-2xl mx-auto">
-            from any public website
+            from specific URL and push to your desired sites
           </p>
         </div>
 

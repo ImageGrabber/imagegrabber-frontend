@@ -111,6 +111,61 @@ function getPNGDimensions(uint8Array: Uint8Array): { width: number; height: numb
   return null;
 }
 
+// Helper function to normalize URL for deduplication
+function normalizeUrl(urlStr: string): string {
+  try {
+    const url = new URL(urlStr);
+    // Remove common parameter variations that don't change the image content
+    const paramsToRemove = ['t', 'v', 'cache', 'timestamp', '_', 'cb', 'bust'];
+    paramsToRemove.forEach(param => url.searchParams.delete(param));
+    
+    // Normalize common size parameters to detect duplicates
+    const sizeParams = ['w', 'width', 'h', 'height', 's', 'size', 'resize'];
+    let hasKnownSizeParams = false;
+    sizeParams.forEach(param => {
+      if (url.searchParams.has(param)) {
+        hasKnownSizeParams = true;
+      }
+    });
+    
+    // Create a base URL without size parameters for deduplication
+    const baseUrl = url.origin + url.pathname;
+    return hasKnownSizeParams ? baseUrl : url.toString();
+  } catch {
+    return urlStr;
+  }
+}
+
+// Helper function to determine if URL is likely an image
+function isImageUrl(url: string): boolean {
+  const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp', '.tiff', '.ico'];
+  const lowercaseUrl = url.toLowerCase();
+  return imageExtensions.some(ext => lowercaseUrl.includes(ext));
+}
+
+// Helper function to generate image content hash for better deduplication
+function getImageContentHash(url: string): string {
+  try {
+    const urlObj = new URL(url);
+    const pathParts = urlObj.pathname.split('/');
+    const filename = pathParts[pathParts.length - 1];
+    
+    // Extract meaningful parts of the filename/path
+    const baseName = filename.split('.')[0];
+    const extension = filename.split('.').pop();
+    
+    // Create hash based on meaningful URL parts, ignoring size variations
+    const hashBase = urlObj.origin + 
+      pathParts.slice(0, -1).join('/') + '/' + 
+      baseName.replace(/[-_]\d+x?\d*$/, '') + // Remove size suffixes like -300x300, _150, etc.
+      '.' + extension;
+      
+    return hashBase;
+  } catch {
+    return url;
+  }
+}
+
 export async function GET(request: NextRequest) {
   const url = request.nextUrl.searchParams.get('url');
   if (!url) {
@@ -128,121 +183,204 @@ export async function GET(request: NextRequest) {
     const baseUrl = new URL(url);
     const images: { url: string; filename: string; size?: number; width?: number; height?: number; type?: string; quality?: 'low' | 'medium' | 'high' }[] = [];
     const processedUrls = new Set<string>();
+    const imageHashes = new Map<string, { url: string; filename: string; size?: number; width?: number; height?: number; type?: string; quality?: 'low' | 'medium' | 'high' }>();
     
     // Helper function to process image URL with metadata
     const processImageUrl = async (src: string) => {
-      if (!src || processedUrls.has(src)) return;
+      if (!src) return;
+      
+      // Skip data URLs, empty strings, and very short URLs
+      if (src.startsWith('data:') || src.length < 4) return;
       
       try {
-        const absoluteUrl = new URL(src, baseUrl.origin).toString();
-        const filename = absoluteUrl.split('/').pop() || 'image.jpg';
+        const absoluteUrl = new URL(src, baseUrl.href).toString();
+        const normalizedUrl = normalizeUrl(absoluteUrl);
+        const contentHash = getImageContentHash(absoluteUrl);
         
-        // Get image metadata
-        const metadata = await getImageMetadata(absoluteUrl);
+        // Check if we already have this exact URL
+        if (images.some(img => img.url === absoluteUrl)) {
+          return;
+        }
         
-        images.push({ 
+        // Basic filtering - only skip obviously non-image URLs
+        // Skip if it's clearly not an image (has obvious non-image extensions)
+        const nonImageExtensions = ['.js', '.css', '.html', '.pdf', '.doc', '.txt', '.xml', '.json'];
+        const hasNonImageExtension = nonImageExtensions.some(ext => absoluteUrl.toLowerCase().includes(ext));
+        if (hasNonImageExtension) return;
+        
+        const filename = absoluteUrl.split('/').pop()?.split('?')[0] || 'image.jpg';
+        
+        // Create basic image data first
+        const imageData = { 
           url: absoluteUrl, 
           filename,
-          ...metadata
+          type: 'image/unknown',
+          quality: 'medium' as const
+        };
+        
+        // Store in our images array
+        images.push(imageData);
+        
+        // Try to get metadata asynchronously (don't wait for it)
+        getImageMetadata(absoluteUrl).then(metadata => {
+          Object.assign(imageData, metadata);
+        }).catch(() => {
+          // Ignore metadata failures
         });
-        processedUrls.add(src);
       } catch (error) {
-        console.error('Failed to process image URL:', src);
+        console.error('Failed to process image URL:', src, error instanceof Error ? error.message : 'Unknown error');
       }
     };
 
-    // PRIMARY TARGET: Product gallery and product main elements
-    const productGalleries = root.querySelectorAll('product-gallery[data-desktop="carousel"][data-mobile="thumbnails"], product-gallery.keen');
-    const productMains = root.querySelectorAll('product-main[data-section][data-product-id].main-product-grid');
+    // COMPREHENSIVE IMAGE SCRAPING - No longer using specific product gallery targeting
+    console.log('Starting comprehensive image scraping...');
     
-    const allProductElements = [...productGalleries, ...productMains];
+    const imagePromises: Promise<void>[] = [];
     
-    if (allProductElements.length > 0) {
-      console.log(`Found ${productGalleries.length} product galleries and ${productMains.length} product main sections`);
+    // 1. Regular img tags with all possible src attributes
+    root.querySelectorAll('img').forEach((img: HTMLElement) => {
+      // Main src attribute
+      const src = img.getAttribute('src');
+      if (src) imagePromises.push(processImageUrl(src));
       
-      const imagePromises: Promise<void>[] = [];
-      
-      allProductElements.forEach((productElement: HTMLElement) => {
-        // Get all images within the product element
-        productElement.querySelectorAll('img').forEach((img: HTMLElement) => {
-          const src = img.getAttribute('src');
-          if (src) imagePromises.push(processImageUrl(src));
-          
-          // Check data attributes for lazy loading
-          const dataSrc = img.getAttribute('data-src');
-          if (dataSrc) imagePromises.push(processImageUrl(dataSrc));
-          
-          const dataLazySrc = img.getAttribute('data-lazy-src');
-          if (dataLazySrc) imagePromises.push(processImageUrl(dataLazySrc));
-          
-          // Check srcset for responsive images
-          const srcset = img.getAttribute('srcset');
-          if (srcset) {
-            srcset.split(',').forEach(src => {
-              const url = src.trim().split(' ')[0];
-              imagePromises.push(processImageUrl(url));
-            });
-          }
-        });
-        
-        // Check for picture elements within product element
-        productElement.querySelectorAll('picture source').forEach((source: HTMLElement) => {
-          const srcset = source.getAttribute('srcset');
-          if (srcset) {
-            srcset.split(',').forEach(src => {
-              const url = src.trim().split(' ')[0];
-              imagePromises.push(processImageUrl(url));
-            });
-          }
-        });
-        
-        // Check for background images in product element
-        productElement.querySelectorAll('[style*="background-image"]').forEach((el: HTMLElement) => {
-          const style = el.getAttribute('style');
-          if (style) {
-            const match = style.match(/url\(['"]?([^'"()]+)['"]?\)/);
-            if (match?.[1]) imagePromises.push(processImageUrl(match[1]));
-          }
-        });
+      // Common lazy loading attributes
+      const lazyAttrs = ['data-src', 'data-lazy-src', 'data-original', 'data-lazy', 'data-srcset', 'data-img-src', 'data-image-src'];
+      lazyAttrs.forEach(attr => {
+        const value = img.getAttribute(attr);
+        if (value) imagePromises.push(processImageUrl(value));
       });
       
-      // Wait for all metadata extraction to complete
-      await Promise.all(imagePromises);
-    }
-    
-    // FALLBACK: If no product galleries found, use general image scraping
-    if (images.length === 0) {
-      console.log('No product galleries found, using fallback scraping...');
+      // Handle srcset for responsive images
+      const srcset = img.getAttribute('srcset');
+      if (srcset) {
+        srcset.split(',').forEach(src => {
+          const url = src.trim().split(' ')[0];
+          if (url) imagePromises.push(processImageUrl(url));
+        });
+      }
       
-      const imagePromises: Promise<void>[] = [];
-      
-      // Regular img tags
-      root.querySelectorAll('img').forEach((img: HTMLElement) => {
-        const src = img.getAttribute('src');
-        if (src) imagePromises.push(processImageUrl(src));
-        
-        const dataSrc = img.getAttribute('data-src');
-        if (dataSrc) imagePromises.push(processImageUrl(dataSrc));
-        
-        const dataLazySrc = img.getAttribute('data-lazy-src');
-        if (dataLazySrc) imagePromises.push(processImageUrl(dataLazySrc));
-      });
+      // Handle data-srcset for lazy loading
+      const dataSrcset = img.getAttribute('data-srcset');
+      if (dataSrcset) {
+        dataSrcset.split(',').forEach(src => {
+          const url = src.trim().split(' ')[0];
+          if (url) imagePromises.push(processImageUrl(url));
+        });
+      }
+    });
 
-      // Background images in style attributes
-      root.querySelectorAll('[style*="background-image"]').forEach((el: HTMLElement) => {
-        const style = el.getAttribute('style');
-        if (style) {
-          const match = style.match(/url\(['"]?([^'"()]+)['"]?\)/);
-          if (match?.[1]) imagePromises.push(processImageUrl(match[1]));
+    // 2. Picture elements and their sources
+    root.querySelectorAll('picture source').forEach((source: HTMLElement) => {
+      const srcset = source.getAttribute('srcset');
+      if (srcset) {
+        srcset.split(',').forEach(src => {
+          const url = src.trim().split(' ')[0];
+          if (url) imagePromises.push(processImageUrl(url));
+        });
+      }
+      
+      // Check for lazy loading on sources too
+      const dataSrcset = source.getAttribute('data-srcset');
+      if (dataSrcset) {
+        dataSrcset.split(',').forEach(src => {
+          const url = src.trim().split(' ')[0];
+          if (url) imagePromises.push(processImageUrl(url));
+        });
+      }
+    });
+
+    // 3. CSS background images in style attributes
+    root.querySelectorAll('[style*="background-image"], [style*="background:"]').forEach((el: HTMLElement) => {
+      const style = el.getAttribute('style');
+      if (style) {
+        // Match multiple URL patterns in background properties
+        const urlMatches = style.match(/url\(['"]?([^'"()]+)['"]?\)/g);
+        if (urlMatches) {
+          urlMatches.forEach(match => {
+            const url = match.match(/url\(['"]?([^'"()]+)['"]?\)/)?.[1];
+            if (url) imagePromises.push(processImageUrl(url));
+          });
         }
+      }
+    });
+
+    // 4. Common container classes that might have images
+    const commonImageContainers = [
+      '.image', '.img', '.photo', '.picture', '.gallery', '.carousel', 
+      '.slider', '.banner', '.hero', '.thumbnail', '.avatar', '.logo',
+      '.product-image', '.gallery-item', '[data-bg]', '[data-background]'
+    ];
+    
+    commonImageContainers.forEach(selector => {
+      try {
+        root.querySelectorAll(selector).forEach((el: HTMLElement) => {
+          // Check for data attributes that might contain image URLs
+          const dataAttrs = ['data-bg', 'data-background', 'data-image', 'data-img'];
+          dataAttrs.forEach(attr => {
+            const value = el.getAttribute(attr);
+            if (value) imagePromises.push(processImageUrl(value));
+          });
+          
+          // Check nested images
+          el.querySelectorAll('img').forEach((img: HTMLElement) => {
+            const src = img.getAttribute('src');
+            if (src) imagePromises.push(processImageUrl(src));
+          });
+        });
+      } catch (e) {
+        // Continue if selector fails
+      }
+    });
+
+    // 5. Links to image files
+    root.querySelectorAll('a[href]').forEach((link: HTMLElement) => {
+      const href = link.getAttribute('href');
+      if (href && isImageUrl(href)) {
+        imagePromises.push(processImageUrl(href));
+      }
+    });
+
+    // 6. Input elements with image sources (like file inputs with previews)
+    root.querySelectorAll('input[type="image"], input[src]').forEach((input: HTMLElement) => {
+      const src = input.getAttribute('src');
+      if (src) imagePromises.push(processImageUrl(src));
+    });
+    
+    // Wait for all image processing to complete
+    await Promise.all(imagePromises);
+    
+    console.log(`Found ${images.length} images after comprehensive scraping`);
+    
+    // If we didn't find many images, try a super aggressive approach
+    if (images.length < 5) {
+      console.log('Low image count, trying aggressive scraping...');
+      const aggressivePromises: Promise<void>[] = [];
+      
+      // Get ALL elements with any src-like attribute
+      root.querySelectorAll('*').forEach((el: HTMLElement) => {
+        const attrs = ['src', 'data-src', 'data-lazy-src', 'data-original', 'data-img', 'data-image'];
+        attrs.forEach(attr => {
+          const value = el.getAttribute(attr);
+          if (value && value.length > 10 && !value.startsWith('data:')) {
+            aggressivePromises.push(processImageUrl(value));
+          }
+        });
       });
       
-      // Wait for all metadata extraction to complete
-      await Promise.all(imagePromises);
+      await Promise.all(aggressivePromises);
+      console.log(`After aggressive scraping: ${images.length} images`);
     }
     
-    console.log(`Found ${images.length} images total`);
-    return NextResponse.json({ images });
+    // Minimal deduplication - only remove exact URL duplicates
+    const seenUrls = new Set<string>();
+    const deduplicatedImages = images.filter(image => {
+      if (seenUrls.has(image.url)) return false;
+      seenUrls.add(image.url);
+      return true;
+    });
+    
+    console.log(`Found ${images.length} images total, deduplicated to ${deduplicatedImages.length} unique images`);
+    return NextResponse.json({ images: deduplicatedImages });
   } catch (error) {
     console.error('Scraping failed:', error);
     return NextResponse.json({ error: 'Failed to scrape images' }, { status: 500 });
