@@ -5,6 +5,8 @@ import Header from '@/components/Header';
 import HeroSection from '@/components/HeroSection';
 import ImageGrid from '@/components/ImageGrid';
 import ImageFilterBar, { FilterOptions } from '@/components/ImageFilterBar';
+import { useAuth } from '@/contexts/AuthContext';
+import { useSearchHistory } from '@/contexts/SearchHistoryContext';
 
 export interface Image {
   url: string;
@@ -20,12 +22,16 @@ export default function Home() {
   const [images, setImages] = useState<Image[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [lastSearchUrl, setLastSearchUrl] = useState<string>('');
   const [filters, setFilters] = useState<FilterOptions>({
     types: [],
     qualities: [],
     sortBy: 'filename',
     sortOrder: 'asc'
   });
+
+  const { user } = useAuth();
+  const { addToHistory } = useSearchHistory();
 
   // Filter and sort images based on current filters
   const filteredAndSortedImages = useMemo(() => {
@@ -82,12 +88,19 @@ export default function Home() {
   const handleScrape = async (url: string) => {
     setIsLoading(true);
     setError(null);
+    setLastSearchUrl(url);
 
     try {
       const res = await fetch(`/api/scrape?url=${encodeURIComponent(url)}`);
       if (!res.ok) throw new Error('Failed to scrape images');
       const data = await res.json();
       setImages(data.images);
+
+      // Update history with image count if user is logged in
+      if (user) {
+        const title = new URL(url).hostname;
+        addToHistory(url, data.images.length, title);
+      }
     } catch (err) {
       setError(
         err instanceof Error ? err.message : 'Something went wrong - try again'

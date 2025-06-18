@@ -1,4 +1,6 @@
 import './globals.css'; // ✅ add this line at the top
+import { AuthProvider } from '@/contexts/AuthContext';
+import { SearchHistoryProvider } from '@/contexts/SearchHistoryContext';
 
 export const metadata = {
   title: 'Image Extractor',
@@ -12,7 +14,13 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <AuthProvider>
+          <SearchHistoryProvider>
+            {children}
+          </SearchHistoryProvider>
+        </AuthProvider>
+      </body>
     </html>
   );
 }

@@ -1,7 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { Paperclip } from 'lucide-react';
+import { Paperclip, History, Eye } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useSearchHistory } from '@/contexts/SearchHistoryContext';
+import Link from 'next/link';
 
 interface Props {
   isLoading: boolean;
@@ -10,9 +13,18 @@ interface Props {
 
 export default function HeroSection({ isLoading, onScrape }: Props) {
   const [url, setUrl] = useState('');
+  const [showHistoryDropdown, setShowHistoryDropdown] = useState(false);
+  const { user } = useAuth();
+  const { history, addToHistory } = useSearchHistory();
 
   const handleExtract = () => {
     if (!url.trim()) return;
+    
+    // Add to history when user is logged in
+    if (user) {
+      addToHistory(url.trim());
+    }
+    
     onScrape(url.trim());
   };
 
@@ -22,6 +34,14 @@ export default function HeroSection({ isLoading, onScrape }: Props) {
     }
   };
 
+  const selectFromHistory = (historicalUrl: string) => {
+    setUrl(historicalUrl);
+    setShowHistoryDropdown(false);
+  };
+
+  // Get recent history (last 5 items)
+  const recentHistory = history.slice(0, 5);
+
   return (
     <section className="relative min-h-[600px] pt-20 pb-16">
       <div className="relative mx-auto max-w-7xl px-4 text-center">
@@ -30,7 +50,7 @@ export default function HeroSection({ isLoading, onScrape }: Props) {
             Extract images
           </h1>
           <p className="text-xl text-blue-100 max-w-2xl mx-auto">
-            from any public specific url
+            from any public website
           </p>
         </div>
 
@@ -50,11 +70,65 @@ export default function HeroSection({ isLoading, onScrape }: Props) {
                   className="flex-1 bg-transparent py-4 text-lg text-gray-900 placeholder-gray-500 outline-none"
                 />
                 <div className="flex items-center gap-2 pr-2">
-                  <button className="rounded-xl p-3 text-gray-400 hover:bg-gray-100 hover:text-gray-600">
-                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
-                    </svg>
-                  </button>
+                  {/* History Button - Only show when logged in */}
+                  {user && (
+                    <div className="relative">
+                      <button 
+                        onClick={() => setShowHistoryDropdown(!showHistoryDropdown)}
+                        className="rounded-xl p-3 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+                        title="Search History"
+                      >
+                        <History className="h-5 w-5" />
+                      </button>
+
+                      {/* History Dropdown */}
+                      {showHistoryDropdown && (
+                        <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
+                          <div className="p-4">
+                            <div className="flex items-center justify-between mb-3">
+                              <h3 className="font-medium text-gray-900">Recent Searches</h3>
+                              <Link 
+                                href="/history"
+                                className="flex items-center gap-1 text-sm text-orange-600 hover:text-orange-700 transition-colors"
+                                onClick={() => setShowHistoryDropdown(false)}
+                              >
+                                <Eye className="h-3 w-3" />
+                                View All
+                              </Link>
+                            </div>
+                            
+                            {recentHistory.length > 0 ? (
+                              <div className="space-y-2 max-h-60 overflow-y-auto">
+                                {recentHistory.map((item) => (
+                                  <button
+                                    key={item.id}
+                                    onClick={() => selectFromHistory(item.url)}
+                                    className="w-full text-left p-2 rounded-lg hover:bg-gray-50 transition-colors"
+                                  >
+                                    <div className="text-sm font-medium text-gray-900 truncate">
+                                      {item.title}
+                                    </div>
+                                    <div className="text-xs text-gray-500 truncate">
+                                      {item.url}
+                                    </div>
+                                    <div className="text-xs text-gray-400">
+                                      {item.imageCount && `${item.imageCount} images • `}
+                                      {item.timestamp.toLocaleDateString()}
+                                    </div>
+                                  </button>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-sm text-gray-500 text-center py-4">
+                                No search history yet
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   <button
                     disabled={isLoading || !url.trim()}
                     onClick={handleExtract}
@@ -93,6 +167,14 @@ export default function HeroSection({ isLoading, onScrape }: Props) {
           </div>
         </div>
       </div>
+
+      {/* Click outside to close dropdown */}
+      {showHistoryDropdown && (
+        <div 
+          className="fixed inset-0 z-0" 
+          onClick={() => setShowHistoryDropdown(false)}
+        />
+      )}
     </section>
   );
 } 
