@@ -1,14 +1,241 @@
 'use client';
 
+import { useState } from 'react';
 import { Image } from '@/app/page';
 import ImageCard from './ImageCard';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabase';
 
 interface ImageGridProps {
   images: Image[];
   onDownload: (url: string, filename: string) => void;
+  onAuthRequired?: () => void;
 }
 
-export default function ImageGrid({ images, onDownload }: ImageGridProps) {
+export default function ImageGrid({ images, onDownload, onAuthRequired }: ImageGridProps) {
+  const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set());
+  const [isWordPressPushing, setIsWordPressPushing] = useState(false);
+  const [isShopifyPushing, setIsShopifyPushing] = useState(false);
+  const [showResultDialog, setShowResultDialog] = useState(false);
+  const [resultMessage, setResultMessage] = useState<{ type: 'success' | 'error'; title: string; message: string } | null>(null);
+  const { user } = useAuth();
+
+  // Create unique identifier for each image to fix duplicate selection issue
+  const getImageId = (image: Image, index: number) => `${index}-${image.url}`;
+
+  const handleSelect = (image: Image, index: number, selected: boolean) => {
+    const imageId = getImageId(image, index);
+    setSelectedImages(prev => {
+      const newSet = new Set(prev);
+      if (selected) {
+        newSet.add(imageId);
+      } else {
+        newSet.delete(imageId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSelectAll = () => {
+    if (selectedImages.size === images.length) {
+      setSelectedImages(new Set());
+    } else {
+      setSelectedImages(new Set(images.map((img, index) => getImageId(img, index))));
+    }
+  };
+
+  const handleBulkPushToWordPress = async () => {
+    if (!user) {
+      onAuthRequired?.();
+      return;
+    }
+
+    setIsWordPressPushing(true);
+    const selectedImagesList = images.filter((img, index) => 
+      selectedImages.has(getImageId(img, index))
+    );
+    
+    try {
+      // Get the user's session token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('No valid session found');
+      }
+
+      // Upload images sequentially to avoid overwhelming WordPress
+      const results = [];
+      let successCount = 0;
+      let errorCount = 0;
+      let lastError = null;
+
+      for (const image of selectedImagesList) {
+        try {
+          const response = await fetch('/api/push/wordpress', {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session.access_token}`
+            },
+            body: JSON.stringify({ image }),
+          });
+          
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || `Failed to push ${image.filename} to WordPress`);
+          }
+          
+          const result = await response.json();
+          results.push(result);
+          successCount++;
+          
+          // Add a small delay between uploads to be nice to WordPress
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+        } catch (error) {
+          errorCount++;
+          lastError = error;
+          console.error(`Failed to push ${image.filename}:`, error);
+        }
+      }
+      
+      // Show result dialog based on outcomes
+      if (errorCount === 0) {
+        // All successful
+        setResultMessage({
+          type: 'success',
+          title: 'WordPress Push Successful!',
+          message: `Successfully pushed ${successCount} image${successCount !== 1 ? 's' : ''} to WordPress.`
+        });
+        setShowResultDialog(true);
+        // Clear selection after successful push
+        setSelectedImages(new Set());
+      } else if (successCount === 0) {
+        // All failed
+        setResultMessage({
+          type: 'error',
+          title: 'WordPress Push Failed',
+          message: `Failed to push all ${selectedImagesList.length} images to WordPress. ${lastError instanceof Error ? lastError.message : 'Unknown error occurred.'}`
+        });
+        setShowResultDialog(true);
+      } else {
+        // Partial success
+        setResultMessage({
+          type: 'error',
+          title: 'WordPress Push Partially Failed',
+          message: `Successfully pushed ${successCount} image${successCount !== 1 ? 's' : ''}, but ${errorCount} failed. Last error: ${lastError instanceof Error ? lastError.message : 'Unknown error'}`
+        });
+        setShowResultDialog(true);
+        // Don't clear selection so user can retry failed ones
+      }
+    } catch (error) {
+      // Show error dialog
+      setResultMessage({
+        type: 'error',
+        title: 'WordPress Push Failed',
+        message: error instanceof Error ? error.message : 'An unknown error occurred while pushing to WordPress.'
+      });
+      setShowResultDialog(true);
+    } finally {
+      setIsWordPressPushing(false);
+    }
+  };
+
+  const handleBulkPushToShopify = async () => {
+    if (!user) {
+      onAuthRequired?.();
+      return;
+    }
+
+    setIsShopifyPushing(true);
+    const selectedImagesList = images.filter((img, index) => 
+      selectedImages.has(getImageId(img, index))
+    );
+    
+    try {
+      // Get the user's session token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('No valid session found');
+      }
+
+      // Upload images sequentially to avoid overwhelming Shopify
+      const results = [];
+      let successCount = 0;
+      let errorCount = 0;
+      let lastError = null;
+
+      for (const image of selectedImagesList) {
+        try {
+          const response = await fetch('/api/push/shopify', {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session.access_token}`
+            },
+            body: JSON.stringify({ image }),
+          });
+          
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || `Failed to push ${image.filename} to Shopify`);
+          }
+          
+          const result = await response.json();
+          results.push(result);
+          successCount++;
+          
+          // Add a small delay between uploads to be nice to Shopify
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+        } catch (error) {
+          errorCount++;
+          lastError = error;
+          console.error(`Failed to push ${image.filename}:`, error);
+        }
+      }
+      
+      // Show result dialog based on outcomes
+      if (errorCount === 0) {
+        // All successful
+        setResultMessage({
+          type: 'success',
+          title: 'Shopify Push Successful!',
+          message: `Successfully pushed ${successCount} image${successCount !== 1 ? 's' : ''} to Shopify.`
+        });
+        setShowResultDialog(true);
+        // Clear selection after successful push
+        setSelectedImages(new Set());
+      } else if (successCount === 0) {
+        // All failed
+        setResultMessage({
+          type: 'error',
+          title: 'Shopify Push Failed',
+          message: `Failed to push all ${selectedImagesList.length} images to Shopify. ${lastError instanceof Error ? lastError.message : 'Unknown error occurred.'}`
+        });
+        setShowResultDialog(true);
+      } else {
+        // Partial success
+        setResultMessage({
+          type: 'error',
+          title: 'Shopify Push Partially Failed',
+          message: `Successfully pushed ${successCount} image${successCount !== 1 ? 's' : ''}, but ${errorCount} failed. Last error: ${lastError instanceof Error ? lastError.message : 'Unknown error'}`
+        });
+        setShowResultDialog(true);
+        // Don't clear selection so user can retry failed ones
+      }
+    } catch (error) {
+      // Show error dialog
+      setResultMessage({
+        type: 'error',
+        title: 'Shopify Push Failed',
+        message: error instanceof Error ? error.message : 'An unknown error occurred while pushing to Shopify.'
+      });
+      setShowResultDialog(true);
+    } finally {
+      setIsShopifyPushing(false);
+    }
+  };
+
   if (images.length === 0) {
     return (
       <div className="flex min-h-[200px] items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50">
@@ -20,16 +247,128 @@ export default function ImageGrid({ images, onDownload }: ImageGridProps) {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-      {images.map((image, index) => (
-        <div
-          key={image.url}
-          className="animate-fade-in"
-          style={{ animationDelay: `${index * 50}ms` }}
-        >
-          <ImageCard image={image} onDownload={onDownload} />
+    <div className="space-y-6">
+      {/* Selection controls */}
+      <div className="flex items-center justify-between rounded-lg bg-white p-4 shadow-sm">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={handleSelectAll}
+            className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-800"
+          >
+            <input
+              type="checkbox"
+              checked={selectedImages.size === images.length && images.length > 0}
+              onChange={() => {}} // Handled by button click
+              className="h-4 w-4 rounded border-gray-300 text-orange-500 focus:ring-orange-500"
+            />
+            {selectedImages.size === images.length && images.length > 0 ? 'Deselect All' : 'Select All'}
+          </button>
+          {selectedImages.size > 0 && (
+            <span className="text-sm text-gray-600">
+              {selectedImages.size} image{selectedImages.size !== 1 ? 's' : ''} selected
+            </span>
+          )}
         </div>
-      ))}
+        
+        {selectedImages.size > 0 && (
+          <div className="flex gap-2">
+            <button
+              onClick={handleBulkPushToWordPress}
+              disabled={isWordPressPushing || isShopifyPushing}
+              className="flex items-center gap-2 rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-600 disabled:opacity-50"
+              title={user ? "Push selected images to WordPress" : "Login required to push to WordPress"}
+            >
+              {isWordPressPushing ? (
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+              ) : (
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
+              )}
+              Push to WordPress
+            </button>
+            <button
+              onClick={handleBulkPushToShopify}
+              disabled={isWordPressPushing || isShopifyPushing}
+              className="flex items-center gap-2 rounded-lg bg-green-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-green-600 disabled:opacity-50"
+              title={user ? "Push selected images to Shopify" : "Login required to push to Shopify"}
+            >
+              {isShopifyPushing ? (
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+              ) : (
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                </svg>
+              )}
+              Push to Shopify
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+        {images.map((image, index) => (
+          <div
+            key={getImageId(image, index)}
+            className="animate-fade-in"
+            style={{ animationDelay: `${index * 50}ms` }}
+          >
+            <ImageCard
+              image={image}
+              onDownload={onDownload}
+              onSelect={(img, selected) => handleSelect(img, index, selected)}
+              isSelected={selectedImages.has(getImageId(image, index))}
+              onAuthRequired={onAuthRequired}
+              onShowResult={(result) => {
+                setResultMessage(result);
+                setShowResultDialog(true);
+              }}
+            />
+          </div>
+        ))}
+      </div>
+
+      {/* Result Dialog */}
+      {showResultDialog && resultMessage && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
+            <div className="flex items-center gap-3 mb-4">
+              {resultMessage.type === 'success' ? (
+                <div className="flex-shrink-0 w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                  <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+              ) : (
+                <div className="flex-shrink-0 w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
+                  <svg className="w-5 h-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </div>
+              )}
+              <h3 className="text-lg font-semibold text-gray-900">
+                {resultMessage.title}
+              </h3>
+            </div>
+            
+            <p className="text-gray-600 mb-6">
+              {resultMessage.message}
+            </p>
+            
+            <div className="flex justify-end">
+              <button
+                onClick={() => {
+                  setShowResultDialog(false);
+                  setResultMessage(null);
+                }}
+                className="rounded-lg bg-gray-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-600"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 } 

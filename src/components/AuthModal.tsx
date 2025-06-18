@@ -9,9 +9,11 @@ interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
   initialMode?: 'login' | 'register';
+  customMessage?: string;
+  onSuccess?: () => void;
 }
 
-export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: AuthModalProps) {
+export default function AuthModal({ isOpen, onClose, initialMode = 'login', customMessage, onSuccess }: AuthModalProps) {
   const [mode, setMode] = useState<'login' | 'register' | 'forgot-password'>(initialMode);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -44,6 +46,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
         } else {
           onClose();
           resetForm();
+          onSuccess?.();
         }
       } else if (mode === 'register') {
         const { error } = await supabase.auth.signUp({
@@ -60,6 +63,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
           setError(error.message);
         } else {
           setMessage('Check your email for the confirmation link!');
+          onSuccess?.();
         }
       } else if (mode === 'forgot-password') {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
@@ -149,6 +153,13 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
             <X className="h-5 w-5" />
           </button>
         </div>
+
+        {/* Custom Message */}
+        {customMessage && (
+          <div className="mb-6 rounded-lg bg-blue-50 p-4">
+            <p className="text-sm text-blue-700">{customMessage}</p>
+          </div>
+        )}
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">

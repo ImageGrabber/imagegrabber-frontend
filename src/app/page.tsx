@@ -5,8 +5,10 @@ import Header from '@/components/Header';
 import HeroSection from '@/components/HeroSection';
 import ImageGrid from '@/components/ImageGrid';
 import ImageFilterBar, { FilterOptions } from '@/components/ImageFilterBar';
+import AuthModal from '@/components/AuthModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSearchHistory } from '@/contexts/SearchHistoryContext';
+import { useRouter } from 'next/navigation';
 
 export interface Image {
   url: string;
@@ -29,9 +31,12 @@ export default function Home() {
     sortBy: 'filename',
     sortOrder: 'asc'
   });
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authMessage, setAuthMessage] = useState<string>('');
 
   const { user } = useAuth();
   const { addToHistory } = useSearchHistory();
+  const router = useRouter();
 
   // Filter and sort images based on current filters
   const filteredAndSortedImages = useMemo(() => {
@@ -154,6 +159,19 @@ export default function Home() {
     }
   };
 
+  /* --------------- AUTH REQUIRED -------------- */
+  const handleAuthRequired = () => {
+    setAuthMessage('Please log in or register to push images to WordPress and Shopify. After logging in, configure your integration settings to start pushing images.');
+    setShowAuthModal(true);
+  };
+
+  const handleAuthSuccess = () => {
+    setShowAuthModal(false);
+    setAuthMessage('');
+    // Redirect to settings page after successful authentication
+    router.push('/settings');
+  };
+
   /* ------------------ RENDER ----------------- */
   return (
     <>
@@ -183,7 +201,11 @@ export default function Home() {
               </button>
             </div>
 
-            <ImageGrid images={filteredAndSortedImages} onDownload={handleDownload} />
+            <ImageGrid 
+              images={filteredAndSortedImages} 
+              onDownload={handleDownload} 
+              onAuthRequired={handleAuthRequired}
+            />
           </main>
         )}
 
@@ -195,6 +217,18 @@ export default function Home() {
           </div>
         )}
       </div>
+
+      {/* Auth Modal for Push Operations */}
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => {
+          setShowAuthModal(false);
+          setAuthMessage('');
+        }}
+        initialMode="register"
+        customMessage={authMessage}
+        onSuccess={handleAuthSuccess}
+      />
     </>
   );
 }

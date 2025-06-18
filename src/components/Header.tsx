@@ -92,12 +92,22 @@ export default function Header() {
                   {showUserMenu && (
                     <div className="absolute right-0 mt-2 w-48 rounded-lg bg-white shadow-lg border border-gray-200 py-1">
                       <Link
-                        href="/profile"
+                        href="/settings"
                         className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                         onClick={() => setShowUserMenu(false)}
                       >
                         <Settings className="h-4 w-4" />
-                        Profile Settings
+                        Integration Settings
+                      </Link>
+                      <Link
+                        href="/history"
+                        className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        onClick={() => setShowUserMenu(false)}
+                      >
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Search History
                       </Link>
                       <button
                         onClick={handleSignOut}

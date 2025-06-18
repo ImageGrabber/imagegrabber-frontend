@@ -2,15 +2,23 @@
 
 import { useState } from 'react';
 import { Image } from '@/app/page';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabase';
 
 interface ImageCardProps {
   image: Image;
   onDownload: (url: string, filename: string) => void;
+  onSelect?: (image: Image, selected: boolean) => void;
+  isSelected?: boolean;
+  onAuthRequired?: () => void;
+  onShowResult?: (result: { type: 'success' | 'error'; title: string; message: string }) => void;
 }
 
-export default function ImageCard({ image, onDownload }: ImageCardProps) {
+export default function ImageCard({ image, onDownload, onSelect, isSelected = false, onAuthRequired, onShowResult }: ImageCardProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [isPushing, setIsPushing] = useState(false);
+  const { user } = useAuth();
 
   const handleImageLoad = () => {
     setIsLoading(false);
@@ -21,8 +29,110 @@ export default function ImageCard({ image, onDownload }: ImageCardProps) {
     setError(true);
   };
 
+  const handlePushToWordPress = async () => {
+    if (!user) {
+      onAuthRequired?.();
+      return;
+    }
+
+    setIsPushing(true);
+    try {
+      // Get the user's session token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('No valid session found');
+      }
+
+      const response = await fetch('/api/push/wordpress', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({ image }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to push to WordPress');
+      }
+      
+      const result = await response.json();
+      onShowResult?.({
+        type: 'success',
+        title: 'WordPress Push Successful!',
+        message: `Successfully pushed "${image.filename}" to WordPress.`
+      });
+    } catch (error) {
+      onShowResult?.({
+        type: 'error',
+        title: 'WordPress Push Failed',
+        message: error instanceof Error ? error.message : 'An unknown error occurred while pushing to WordPress.'
+      });
+    } finally {
+      setIsPushing(false);
+    }
+  };
+
+  const handlePushToShopify = async () => {
+    if (!user) {
+      onAuthRequired?.();
+      return;
+    }
+
+    setIsPushing(true);
+    try {
+      // Get the user's session token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('No valid session found');
+      }
+
+      const response = await fetch('/api/push/shopify', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({ image }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to push to Shopify');
+      }
+      
+      const result = await response.json();
+      onShowResult?.({
+        type: 'success',
+        title: 'Shopify Push Successful!',
+        message: `Successfully pushed "${image.filename}" to Shopify.`
+      });
+    } catch (error) {
+      onShowResult?.({
+        type: 'error',
+        title: 'Shopify Push Failed',
+        message: error instanceof Error ? error.message : 'An unknown error occurred while pushing to Shopify.'
+      });
+    } finally {
+      setIsPushing(false);
+    }
+  };
+
   return (
-    <div className="group relative overflow-hidden rounded-lg bg-white shadow-md transition-all duration-300 hover:shadow-xl">
+    <div className={`group relative overflow-hidden rounded-lg bg-white shadow-md transition-all duration-300 hover:shadow-xl ${isSelected ? 'ring-2 ring-orange-500' : ''}`}>
+      {/* Selection checkbox */}
+      {onSelect && (
+        <div className="absolute top-2 right-2 z-10">
+          <input
+            type="checkbox"
+            checked={isSelected}
+            onChange={(e) => onSelect(image, e.target.checked)}
+            className="h-5 w-5 rounded border-gray-300 text-orange-500 focus:ring-orange-500"
+          />
+        </div>
+      )}
+
       {/* Loading state */}
       {isLoading && (
         <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
@@ -56,7 +166,7 @@ export default function ImageCard({ image, onDownload }: ImageCardProps) {
 
       {/* Overlay with actions */}
       <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-0 transition-all duration-300 group-hover:bg-opacity-50">
-        <div className="flex translate-y-4 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
+        <div className="flex gap-2 translate-y-4 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
           <button
             onClick={() => onDownload(image.url, image.filename)}
             className="rounded-full bg-white p-3 text-gray-800 shadow-lg transition-colors hover:bg-primary hover:text-white"
@@ -65,6 +175,34 @@ export default function ImageCard({ image, onDownload }: ImageCardProps) {
             <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>
+          </button>
+          <button
+            onClick={handlePushToWordPress}
+            disabled={isPushing}
+            className="rounded-full bg-white p-3 text-gray-800 shadow-lg transition-colors hover:bg-blue-500 hover:text-white disabled:opacity-50"
+            title={user ? "Push to WordPress" : "Login required to push to WordPress"}
+          >
+            {isPushing ? (
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-800 border-t-transparent"></div>
+            ) : (
+              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+            )}
+          </button>
+          <button
+            onClick={handlePushToShopify}
+            disabled={isPushing}
+            className="rounded-full bg-white p-3 text-gray-800 shadow-lg transition-colors hover:bg-green-500 hover:text-white disabled:opacity-50"
+            title={user ? "Push to Shopify" : "Login required to push to Shopify"}
+          >
+            {isPushing ? (
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-800 border-t-transparent"></div>
+            ) : (
+              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+              </svg>
+            )}
           </button>
         </div>
       </div>
