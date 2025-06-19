@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import sharp from 'sharp';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -8,7 +9,7 @@ const supabase = createClient(
 
 export async function POST(request: NextRequest) {
   try {
-    const { image } = await request.json();
+    const { image, productId } = await request.json();
     
     // Get the authorization header
     const authHeader = request.headers.get('authorization');
@@ -45,6 +46,7 @@ export async function POST(request: NextRequest) {
     }
 
     const { shopify_store: shopifyStore, shopify_access_token: shopifyAccessToken, shopify_product_id: shopifyProductId } = settings;
+    const effectiveProductId = productId || shopifyProductId;
 
     if (!shopifyStore || !shopifyAccessToken) {
       return NextResponse.json(
@@ -60,13 +62,34 @@ export async function POST(request: NextRequest) {
     }
     const imageBuffer = await imageResponse.arrayBuffer();
 
+    // Use sharp to check and resize if needed
+    let processedBuffer = Buffer.from(imageBuffer);
+    let width, height;
+    try {
+      const metadata = await sharp(processedBuffer).metadata();
+      width = metadata.width;
+      height = metadata.height;
+      if (width && height && width * height > 20000000) {
+        // Calculate new dimensions to fit within 20MP
+        const scale = Math.sqrt(20000000 / (width * height));
+        const newWidth = Math.floor(width * scale);
+        const newHeight = Math.floor(height * scale);
+        processedBuffer = await sharp(processedBuffer)
+          .resize(newWidth, newHeight)
+          .toBuffer();
+      }
+    } catch (err) {
+      console.error('Error processing image with sharp:', err);
+      // Optionally, handle error or fallback to original buffer
+    }
+
     // Convert buffer to base64 for Shopify API
-    const base64Image = Buffer.from(imageBuffer).toString('base64');
+    const base64Image = processedBuffer.toString('base64');
     const contentType = imageResponse.headers.get('content-type') || 'image/jpeg';
 
     let uploadResult;
 
-    if (shopifyProductId) {
+    if (effectiveProductId) {
       // Upload as product image
       const productImageData = {
         image: {
@@ -76,7 +99,7 @@ export async function POST(request: NextRequest) {
         }
       };
 
-      const uploadResponse = await fetch(`https://${shopifyStore}/admin/api/2024-01/products/${shopifyProductId}/images.json`, {
+      const uploadResponse = await fetch(`https://${shopifyStore}/admin/api/2024-01/products/${effectiveProductId}/images.json`, {
         method: 'POST',
         headers: {
           'X-Shopify-Access-Token': shopifyAccessToken,

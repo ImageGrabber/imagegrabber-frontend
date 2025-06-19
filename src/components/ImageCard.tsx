@@ -198,16 +198,16 @@ export default function ImageCard({ image, onDownload, onSelect, isSelected = fa
         <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-0 transition-all duration-300 group-hover:bg-opacity-50">
           <div className="flex gap-2 translate-y-4 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
             <button
-              onClick={() => onDownload(image.url, image.filename)}
-              className="rounded-full bg-white p-3 text-gray-800 shadow-lg transition-colors hover:bg-primary hover:text-white"
-              title="Download image"
+              onClick={e => { e.stopPropagation(); onDownload(image.url, image.filename); }}
+              className="rounded-full bg-white p-3 text-gray-800 shadow-lg transition-colors hover:bg-blue-500 hover:text-white disabled:opacity-50"
+              title="Download"
             >
               <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
             </button>
             <button
-              onClick={handlePushToWordPress}
+              onClick={e => { e.stopPropagation(); handlePushToWordPress(); }}
               disabled={isWordPressPushing || isShopifyPushing}
               className="rounded-full bg-white p-3 text-gray-800 shadow-lg transition-colors hover:bg-blue-500 hover:text-white disabled:opacity-50"
               title={user ? "Push to WordPress" : "Login required to push to WordPress"}
@@ -221,7 +221,7 @@ export default function ImageCard({ image, onDownload, onSelect, isSelected = fa
               )}
             </button>
             <button
-              onClick={handlePushToShopify}
+              onClick={e => { e.stopPropagation(); handlePushToShopify(); }}
               disabled={isWordPressPushing || isShopifyPushing}
               className="rounded-full bg-white p-3 text-gray-800 shadow-lg transition-colors hover:bg-green-500 hover:text-white disabled:opacity-50"
               title={user ? "Push to Shopify" : "Login required to push to Shopify"}

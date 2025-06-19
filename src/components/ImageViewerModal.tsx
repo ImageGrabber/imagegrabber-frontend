@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Image } from '@/app/page';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { X, Download, Upload, ExternalLink } from 'lucide-react';
+import ShopifyPushModal from './ShopifyPushModal';
 
 interface ImageViewerModalProps {
   image: Image;
@@ -28,6 +29,10 @@ export default function ImageViewerModal({
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
   const { user } = useAuth();
+  const [showShopifyModal, setShowShopifyModal] = useState(false);
+  const [shopifyModalLoading, setShopifyModalLoading] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const imageContainerRef = useRef<HTMLDivElement>(null);
 
   if (!isOpen) return null;
 
@@ -75,40 +80,42 @@ export default function ImageViewerModal({
     }
   };
 
-  const handlePushToShopify = async () => {
+  const handlePushToShopify = async (opts?: { mode: 'gallery' | 'product'; productId?: string }) => {
     if (!user) {
       onAuthRequired?.();
       return;
     }
-
     setIsShopifyPushing(true);
+    setShopifyModalLoading(true);
     try {
       // Get the user's session token
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) {
         throw new Error('No valid session found');
       }
-
+      const body: any = { image };
+      if (opts?.mode === 'product' && opts.productId) {
+        body.productId = opts.productId;
+      }
       const response = await fetch('/api/push/shopify', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`
         },
-        body: JSON.stringify({ image }),
+        body: JSON.stringify(body),
       });
-      
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to push to Shopify');
       }
-      
       const result = await response.json();
       onShowResult?.({
         type: 'success',
         title: 'Shopify Push Successful!',
         message: `Successfully pushed "${image.filename}" to Shopify.\n\nLocation: ${result.location || 'Shopify Files'}\n${result.instructions || 'Check your Shopify admin to find the uploaded file.'}`
       });
+      setShowShopifyModal(false);
     } catch (error) {
       onShowResult?.({
         type: 'error',
@@ -117,6 +124,7 @@ export default function ImageViewerModal({
       });
     } finally {
       setIsShopifyPushing(false);
+      setShopifyModalLoading(false);
     }
   };
 
@@ -133,6 +141,31 @@ export default function ImageViewerModal({
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
+
+  // Fullscreen API handlers
+  useEffect(() => {
+    if (!isFullscreen) return;
+    const el = imageContainerRef.current;
+    if (el && el.requestFullscreen) {
+      el.requestFullscreen();
+    }
+    const handleExit = () => {
+      setIsFullscreen(false);
+    };
+    document.addEventListener('fullscreenchange', () => {
+      if (!document.fullscreenElement) handleExit();
+    });
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') handleExit();
+    };
+    document.addEventListener('keydown', handleEsc);
+    return () => {
+      document.removeEventListener('fullscreenchange', () => {
+        if (!document.fullscreenElement) handleExit();
+      });
+      document.removeEventListener('keydown', handleEsc);
+    };
+  }, [isFullscreen]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75" onClick={handleBackdropClick}>
@@ -174,7 +207,33 @@ export default function ImageViewerModal({
         </div>
 
         {/* Image Display */}
-        <div className="relative bg-gray-100 flex items-center justify-center" style={{ minHeight: '400px', maxHeight: '60vh' }}>
+        <div
+          ref={imageContainerRef}
+          className={`relative bg-gray-100 flex items-center justify-center ${isFullscreen ? 'fixed inset-0 z-[100] bg-black max-w-none max-h-none w-screen h-screen' : ''}`}
+          style={isFullscreen ? { minHeight: '100vh', maxHeight: '100vh' } : { minHeight: '400px', maxHeight: '60vh' }}
+        >
+          {/* Zoom/Fullscreen Button */}
+          {!isFullscreen && (
+            <button
+              onClick={() => setIsFullscreen(true)}
+              className="absolute top-4 left-4 p-2 bg-black bg-opacity-50 text-white rounded-lg hover:bg-opacity-70 transition-colors z-20"
+              title="View fullscreen"
+            >
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M8 3H5a2 2 0 00-2 2v3m0 8v3a2 2 0 002 2h3m8-16h3a2 2 0 012 2v3m0 8v3a2 2 0 01-2 2h-3" /></svg>
+            </button>
+          )}
+          {isFullscreen && (
+            <button
+              onClick={() => {
+                setIsFullscreen(false);
+                if (document.fullscreenElement) document.exitFullscreen();
+              }}
+              className="absolute top-4 left-4 p-2 bg-black bg-opacity-70 text-white rounded-lg hover:bg-opacity-90 transition-colors z-20"
+              title="Exit fullscreen"
+            >
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+          )}
           {!imageLoaded && !imageError && (
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="h-8 w-8 animate-spin rounded-full border-4 border-orange-500 border-t-transparent"></div>
@@ -195,7 +254,8 @@ export default function ImageViewerModal({
           <img
             src={image.url}
             alt={image.filename}
-            className="max-w-full max-h-full object-contain"
+            className={`object-contain ${isFullscreen ? 'max-w-full max-h-full w-auto h-auto' : 'max-w-full max-h-full'}`}
+            style={isFullscreen ? { width: '100vw', height: '100vh' } : {}}
             onLoad={() => setImageLoaded(true)}
             onError={() => {
               setImageLoaded(true);
@@ -204,15 +264,17 @@ export default function ImageViewerModal({
           />
 
           {/* View Original Link */}
-          <a
-            href={image.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="absolute top-4 right-4 p-2 bg-black bg-opacity-50 text-white rounded-lg hover:bg-opacity-70 transition-colors"
-            title="View original image"
-          >
-            <ExternalLink className="h-5 w-5" />
-          </a>
+          {!isFullscreen && (
+            <a
+              href={image.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="absolute top-4 right-4 p-2 bg-black bg-opacity-50 text-white rounded-lg hover:bg-opacity-70 transition-colors"
+              title="View original image"
+            >
+              <ExternalLink className="h-5 w-5" />
+            </a>
+          )}
         </div>
 
         {/* Action Buttons */}
@@ -251,7 +313,7 @@ export default function ImageViewerModal({
 
               {/* Shopify Push */}
               <button
-                onClick={handlePushToShopify}
+                onClick={() => setShowShopifyModal(true)}
                 disabled={isShopifyPushing || !user}
                 className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 title={!user ? "Login required" : "Push to Shopify"}
@@ -284,6 +346,12 @@ export default function ImageViewerModal({
           </div>
         </div>
       </div>
+      <ShopifyPushModal
+        isOpen={showShopifyModal}
+        onClose={() => setShowShopifyModal(false)}
+        onConfirm={opts => handlePushToShopify(opts)}
+        loading={shopifyModalLoading}
+      />
     </div>
   );
 } 

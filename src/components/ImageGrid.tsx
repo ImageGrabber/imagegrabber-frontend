@@ -7,6 +7,7 @@ import ImageViewerModal from './ImageViewerModal';
 import Notification from './Notification';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
+import ShopifyPushModal from './ShopifyPushModal';
 
 interface ImageGridProps {
   images: Image[];
@@ -35,6 +36,9 @@ export default function ImageGrid({ images, onDownload, onAuthRequired }: ImageG
   const [showNotification, setShowNotification] = useState(false);
   const [notificationData, setNotificationData] = useState<{ type: 'success' | 'error'; title: string; message: string } | null>(null);
   const { user } = useAuth();
+  const [showShopifyModal, setShowShopifyModal] = useState(false);
+  const [shopifyModalLoading, setShopifyModalLoading] = useState(false);
+  const [shopifyBulkOpts, setShopifyBulkOpts] = useState<{ mode: 'gallery' | 'product'; productId?: string } | null>(null);
 
   // Create unique identifier for each image to fix duplicate selection issue
   const getImageId = (image: Image, index: number) => `${index}-${image.url}`;
@@ -222,22 +226,18 @@ export default function ImageGrid({ images, onDownload, onAuthRequired }: ImageG
     }
   };
 
-  const handleBulkPushToShopify = async () => {
+  const handleBulkPushToShopify = async (opts?: { mode: 'gallery' | 'product'; productId?: string }) => {
     if (!user) {
       onAuthRequired?.();
       return;
     }
-
     setIsShopifyPushing(true);
+    setShopifyModalLoading(true);
     const selectedImagesList = images.filter((img, index) => 
       selectedImages.has(getImageId(img, index))
     );
-
-    // Show progress dialog
     setShowProgressDialog(true);
-    
     try {
-      // Get the user's session token
       setProgressInfo({
         platform: 'Shopify',
         currentIndex: 0,
@@ -245,21 +245,16 @@ export default function ImageGrid({ images, onDownload, onAuthRequired }: ImageG
         currentImage: selectedImagesList[0],
         status: 'Authenticating...'
       });
-
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) {
         throw new Error('No valid session found');
       }
-
-      // Upload images sequentially to avoid overwhelming Shopify
       const results = [];
       let successCount = 0;
       let errorCount = 0;
       let lastError = null;
-
       for (let i = 0; i < selectedImagesList.length; i++) {
         const image = selectedImagesList[i];
-        
         setProgressInfo({
           platform: 'Shopify',
           currentIndex: i + 1,
@@ -267,27 +262,26 @@ export default function ImageGrid({ images, onDownload, onAuthRequired }: ImageG
           currentImage: image,
           status: `Uploading "${image.filename}"...`
         });
-
         try {
+          const body: any = { image };
+          if (opts?.mode === 'product' && opts.productId) {
+            body.productId = opts.productId;
+          }
           const response = await fetch('/api/push/shopify', {
             method: 'POST',
             headers: { 
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${session.access_token}`
             },
-            body: JSON.stringify({ image }),
+            body: JSON.stringify(body),
           });
-          
           if (!response.ok) {
             const errorData = await response.json();
             throw new Error(errorData.error || `Failed to push ${image.filename} to Shopify`);
           }
-          
           const result = await response.json();
           results.push(result);
           successCount++;
-          
-          // Update progress with success
           setProgressInfo({
             platform: 'Shopify',
             currentIndex: i + 1,
@@ -295,16 +289,10 @@ export default function ImageGrid({ images, onDownload, onAuthRequired }: ImageG
             currentImage: image,
             status: `✓ "${image.filename}" uploaded successfully`
           });
-          
-          // Add a small delay between uploads to be nice to Shopify
           await new Promise(resolve => setTimeout(resolve, 500));
-          
         } catch (error) {
           errorCount++;
           lastError = error;
-          console.error(`Failed to push ${image.filename}:`, error);
-          
-          // Update progress with error
           setProgressInfo({
             platform: 'Shopify',
             currentIndex: i + 1,
@@ -312,27 +300,19 @@ export default function ImageGrid({ images, onDownload, onAuthRequired }: ImageG
             currentImage: image,
             status: `✗ Failed to upload "${image.filename}"`
           });
-          
           await new Promise(resolve => setTimeout(resolve, 500));
         }
       }
-      
-      // Hide progress dialog
       setShowProgressDialog(false);
-      
-      // Show result dialog based on outcomes
       if (errorCount === 0) {
-        // All successful
         setResultMessage({
           type: 'success',
           title: 'Shopify Push Successful!',
           message: `Successfully pushed ${successCount} image${successCount !== 1 ? 's' : ''} to Shopify.`
         });
         setShowResultDialog(true);
-        // Clear selection after successful push
         setSelectedImages(new Set());
       } else if (successCount === 0) {
-        // All failed
         setResultMessage({
           type: 'error',
           title: 'Shopify Push Failed',
@@ -340,17 +320,15 @@ export default function ImageGrid({ images, onDownload, onAuthRequired }: ImageG
         });
         setShowResultDialog(true);
       } else {
-        // Partial success
         setResultMessage({
           type: 'error',
           title: 'Shopify Push Partially Failed',
           message: `Successfully pushed ${successCount} image${successCount !== 1 ? 's' : ''}, but ${errorCount} failed. Last error: ${lastError instanceof Error ? lastError.message : 'Unknown error'}`
         });
         setShowResultDialog(true);
-        // Don't clear selection so user can retry failed ones
       }
+      setShowShopifyModal(false);
     } catch (error) {
-      // Hide progress dialog and show error dialog
       setShowProgressDialog(false);
       setResultMessage({
         type: 'error',
@@ -361,6 +339,7 @@ export default function ImageGrid({ images, onDownload, onAuthRequired }: ImageG
     } finally {
       setIsShopifyPushing(false);
       setProgressInfo(null);
+      setShopifyModalLoading(false);
     }
   };
 
@@ -416,7 +395,7 @@ export default function ImageGrid({ images, onDownload, onAuthRequired }: ImageG
               Push to WordPress
             </button>
             <button
-              onClick={handleBulkPushToShopify}
+              onClick={() => setShowShopifyModal(true)}
               disabled={isWordPressPushing || isShopifyPushing}
               className="flex items-center gap-2 rounded-lg bg-green-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-green-600 disabled:opacity-50"
               title={user ? "Push selected images to Shopify" : "Login required to push to Shopify"}
@@ -584,6 +563,13 @@ export default function ImageGrid({ images, onDownload, onAuthRequired }: ImageG
           onClose={handleCloseNotification}
         />
       )}
+
+      <ShopifyPushModal
+        isOpen={showShopifyModal}
+        onClose={() => setShowShopifyModal(false)}
+        onConfirm={opts => handleBulkPushToShopify(opts)}
+        loading={shopifyModalLoading}
+      />
     </div>
   );
 }
