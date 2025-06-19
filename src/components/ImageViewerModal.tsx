@@ -349,7 +349,10 @@ export default function ImageViewerModal({
       <ShopifyPushModal
         isOpen={showShopifyModal}
         onClose={() => setShowShopifyModal(false)}
-        onConfirm={opts => handlePushToShopify(opts)}
+        onConfirm={opts => {
+          setShowShopifyModal(false);
+          handlePushToShopify(opts);
+        }}
         loading={shopifyModalLoading}
       />
     </div>

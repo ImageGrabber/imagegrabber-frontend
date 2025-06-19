@@ -12,7 +12,7 @@
     "@supabase/auth-helpers-nextjs": "^0.10.0",
     "@supabase/supabase-js": "^2.50.0",
     "dotenv": "^16.5.0",
-    "js-zip": "1.0.1",
+    "js-zip": "^1.0.1",
     "lucide-react": "^0.516.0",
     "next": "14.1.0",
     "node-html-parser": "^6.1.12",

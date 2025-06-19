@@ -446,9 +446,11 @@ export default function ImageGrid({ images, onDownload, onAuthRequired }: ImageG
               </div>
               <h3 className="text-lg font-semibold text-gray-900">
                 Uploading to {progressInfo.platform}
+                <span className="ml-2 text-blue-600 text-base font-normal">
+                  {progressInfo.totalImages > 0 ? `${Math.round((progressInfo.currentIndex / progressInfo.totalImages) * 100)}% complete` : ''}
+                </span>
               </h3>
             </div>
-            
             <div className="space-y-4">
               {/* Overall Progress */}
               <div className="space-y-2">
@@ -465,16 +467,15 @@ export default function ImageGrid({ images, onDownload, onAuthRequired }: ImageG
                   ></div>
                 </div>
               </div>
-
               {/* Current Image */}
-              <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+              <div className="flex items-center gap-4 p-4 bg-blue-50 rounded-lg border border-blue-100">
                 <img 
                   src={progressInfo.currentImage.url} 
                   alt={progressInfo.currentImage.filename}
-                  className="w-12 h-12 rounded object-cover"
+                  className="w-16 h-16 rounded object-cover border border-blue-200"
                 />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">
+                  <p className="text-base font-semibold text-blue-900 truncate">
                     {progressInfo.currentImage.filename}
                   </p>
                   <p className="text-xs text-gray-500">
@@ -482,7 +483,6 @@ export default function ImageGrid({ images, onDownload, onAuthRequired }: ImageG
                   </p>
                 </div>
               </div>
-              
               {/* Status */}
               <div className="space-y-2">
                 <p className="text-sm text-gray-600">
@@ -567,7 +567,10 @@ export default function ImageGrid({ images, onDownload, onAuthRequired }: ImageG
       <ShopifyPushModal
         isOpen={showShopifyModal}
         onClose={() => setShowShopifyModal(false)}
-        onConfirm={opts => handleBulkPushToShopify(opts)}
+        onConfirm={opts => {
+          setShowShopifyModal(false);
+          handleBulkPushToShopify(opts);
+        }}
         loading={shopifyModalLoading}
       />
     </div>
