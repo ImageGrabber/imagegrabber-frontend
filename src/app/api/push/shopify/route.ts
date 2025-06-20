@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
     const imageBuffer = await imageResponse.arrayBuffer();
 
     // Use sharp to check and resize if needed
-    let processedBuffer = Buffer.from(imageBuffer);
+    let processedBuffer: Buffer = Buffer.from(new Uint8Array(imageBuffer));
     let width, height;
     try {
       const metadata = await sharp(processedBuffer).metadata();
