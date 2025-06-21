@@ -49,29 +49,29 @@ export default function HeroSection({ isLoading, onScrape }: Props) {
           {/* Floating Particles */}
           <div className="absolute inset-0">
             {/* Large particles */}
-            <div className="absolute top-20 left-20 w-6 h-6 bg-white/20 rounded-full animate-bounce" style={{animationDelay: '0s', animationDuration: '3s'}}></div>
-            <div className="absolute top-40 right-32 w-5 h-5 bg-blue-400/30 rounded-full animate-bounce" style={{animationDelay: '1s', animationDuration: '4s'}}></div>
-            <div className="absolute top-60 left-1/3 w-4 h-4 bg-purple-400/40 rounded-full animate-bounce" style={{animationDelay: '2s', animationDuration: '2.5s'}}></div>
-            <div className="absolute bottom-40 right-20 w-7 h-7 bg-white/15 rounded-full animate-bounce" style={{animationDelay: '0.5s', animationDuration: '3.5s'}}></div>
-            <div className="absolute bottom-60 left-24 w-5 h-5 bg-blue-300/25 rounded-full animate-bounce" style={{animationDelay: '1.5s', animationDuration: '4.5s'}}></div>
+            <div className="absolute top-20 left-20 w-12 h-12 bg-white/20 rounded-full animate-bounce" style={{animationDelay: '0s', animationDuration: '3s'}}></div>
+            <div className="absolute top-40 right-32 w-10 h-10 bg-blue-400/30 rounded-full animate-bounce" style={{animationDelay: '1s', animationDuration: '4s'}}></div>
+            <div className="absolute top-60 left-1/3 w-8 h-8 bg-purple-400/40 rounded-full animate-bounce" style={{animationDelay: '2s', animationDuration: '2.5s'}}></div>
+            <div className="absolute bottom-40 right-20 w-14 h-14 bg-white/15 rounded-full animate-bounce" style={{animationDelay: '0.5s', animationDuration: '3.5s'}}></div>
+            <div className="absolute bottom-60 left-24 w-10 h-10 bg-blue-300/25 rounded-full animate-bounce" style={{animationDelay: '1.5s', animationDuration: '4.5s'}}></div>
             
             {/* Medium particles */}
-            <div className="absolute top-32 right-1/4 w-3 h-3 bg-white/30 rounded-full animate-pulse" style={{animationDelay: '0s', animationDuration: '2s'}}></div>
-            <div className="absolute top-72 left-40 w-2 h-2 bg-purple-300/50 rounded-full animate-pulse" style={{animationDelay: '1s', animationDuration: '3s'}}></div>
-            <div className="absolute bottom-32 right-40 w-3 h-3 bg-blue-200/35 rounded-full animate-pulse" style={{animationDelay: '2s', animationDuration: '2.5s'}}></div>
-            <div className="absolute bottom-20 left-1/2 w-2 h-2 bg-white/40 rounded-full animate-pulse" style={{animationDelay: '0.5s', animationDuration: '4s'}}></div>
+            <div className="absolute top-32 right-1/4 w-6 h-6 bg-white/30 rounded-full animate-pulse" style={{animationDelay: '0s', animationDuration: '2s'}}></div>
+            <div className="absolute top-72 left-40 w-4 h-4 bg-purple-300/50 rounded-full animate-pulse" style={{animationDelay: '1s', animationDuration: '3s'}}></div>
+            <div className="absolute bottom-32 right-40 w-6 h-6 bg-blue-200/35 rounded-full animate-pulse" style={{animationDelay: '2s', animationDuration: '2.5s'}}></div>
+            <div className="absolute bottom-20 left-1/2 w-4 h-4 bg-white/40 rounded-full animate-pulse" style={{animationDelay: '0.5s', animationDuration: '4s'}}></div>
             
             {/* Small particles */}
-            <div className="absolute top-16 left-1/2 w-2 h-2 bg-white/25 rounded-full animate-ping" style={{animationDelay: '0s', animationDuration: '3s'}}></div>
-            <div className="absolute top-80 right-16 w-1.5 h-1.5 bg-blue-100/40 rounded-full animate-ping" style={{animationDelay: '1s', animationDuration: '2s'}}></div>
-            <div className="absolute bottom-16 left-16 w-2 h-2 bg-purple-200/30 rounded-full animate-ping" style={{animationDelay: '2s', animationDuration: '4s'}}></div>
-            <div className="absolute bottom-80 right-1/3 w-1.5 h-1.5 bg-white/35 rounded-full animate-ping" style={{animationDelay: '1.5s', animationDuration: '3.5s'}}></div>
+            <div className="absolute top-16 left-1/2 w-4 h-4 bg-white/25 rounded-full animate-ping" style={{animationDelay: '0s', animationDuration: '3s'}}></div>
+            <div className="absolute top-80 right-16 w-3 h-3 bg-blue-100/40 rounded-full animate-ping" style={{animationDelay: '1s', animationDuration: '2s'}}></div>
+            <div className="absolute bottom-16 left-16 w-4 h-4 bg-purple-200/30 rounded-full animate-ping" style={{animationDelay: '2s', animationDuration: '4s'}}></div>
+            <div className="absolute bottom-80 right-1/3 w-3 h-3 bg-white/35 rounded-full animate-ping" style={{animationDelay: '1.5s', animationDuration: '3.5s'}}></div>
             
             {/* Floating particles with custom animation */}
-            <div className="absolute top-24 right-12 w-4 h-4 bg-gradient-to-r from-blue-400/20 to-purple-400/20 rounded-full" style={{animation: 'float 6s ease-in-out infinite'}}></div>
-            <div className="absolute top-56 left-12 w-5 h-5 bg-gradient-to-r from-purple-300/15 to-blue-300/15 rounded-full" style={{animation: 'float 8s ease-in-out infinite reverse'}}></div>
-            <div className="absolute bottom-24 right-1/4 w-4 h-4 bg-gradient-to-r from-white/20 to-blue-200/20 rounded-full" style={{animation: 'float 7s ease-in-out infinite'}}></div>
-            <div className="absolute bottom-56 left-1/4 w-3 h-3 bg-gradient-to-r from-blue-100/30 to-purple-100/30 rounded-full" style={{animation: 'float 5s ease-in-out infinite reverse'}}></div>
+            <div className="absolute top-24 right-12 w-8 h-8 bg-gradient-to-r from-blue-400/20 to-purple-400/20 rounded-full" style={{animation: 'float 6s ease-in-out infinite'}}></div>
+            <div className="absolute top-56 left-12 w-10 h-10 bg-gradient-to-r from-purple-300/15 to-blue-300/15 rounded-full" style={{animation: 'float 8s ease-in-out infinite reverse'}}></div>
+            <div className="absolute bottom-24 right-1/4 w-8 h-8 bg-gradient-to-r from-white/20 to-blue-200/20 rounded-full" style={{animation: 'float 7s ease-in-out infinite'}}></div>
+            <div className="absolute bottom-56 left-1/4 w-6 h-6 bg-gradient-to-r from-blue-100/30 to-purple-100/30 rounded-full" style={{animation: 'float 5s ease-in-out infinite reverse'}}></div>
           </div>
         </div>
 

@@ -31,7 +31,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [credits, setCredits] = useState<number | null>(null);
 
   const navigation = [
-    { name: 'Extract Images', href: '/', icon: Globe },
+    { name: 'Dashboard', href: '/', icon: Globe },
+    { name: 'Extract Images', href: '/extract', icon: Globe },
     { name: 'Batch Processing', href: '/batch', icon: Upload },
     { name: 'Search History', href: '/history', icon: History },
     { name: 'Credits', href: '/credits', icon: Coins },
@@ -241,8 +242,48 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         </div>
 
         {/* Page content */}
-        <main className="flex-1">
-          {children}
+        <main className="flex-1 relative">
+          {/* Particle Background */}
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            {/* Decorative background elements */}
+            <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-900/20 rounded-full filter blur-3xl opacity-30 animate-pulse"></div>
+            <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-900/20 rounded-full filter blur-3xl opacity-30 animate-pulse delay-2000"></div>
+            <div className="absolute -top-20 -left-40 w-[400px] h-[400px] border-2 border-white/5 rounded-full" />
+            <div className="absolute -bottom-20 -right-40 w-[400px] h-[400px] border border-white/5 rounded-full" />
+            
+            {/* Floating Particles */}
+            <div className="absolute inset-0">
+              {/* Large particles */}
+              <div className="absolute top-20 left-20 w-8 h-8 bg-white/15 rounded-full animate-bounce" style={{animationDelay: '0s', animationDuration: '4s'}}></div>
+              <div className="absolute top-40 right-32 w-6 h-6 bg-blue-400/25 rounded-full animate-bounce" style={{animationDelay: '1s', animationDuration: '5s'}}></div>
+              <div className="absolute top-60 left-1/3 w-6 h-6 bg-purple-400/30 rounded-full animate-bounce" style={{animationDelay: '2s', animationDuration: '3s'}}></div>
+              <div className="absolute bottom-40 right-20 w-10 h-10 bg-white/10 rounded-full animate-bounce" style={{animationDelay: '0.5s', animationDuration: '4.5s'}}></div>
+              <div className="absolute bottom-60 left-24 w-6 h-6 bg-blue-300/20 rounded-full animate-bounce" style={{animationDelay: '1.5s', animationDuration: '5.5s'}}></div>
+              
+              {/* Medium particles */}
+              <div className="absolute top-32 right-1/4 w-4 h-4 bg-white/25 rounded-full animate-pulse" style={{animationDelay: '0s', animationDuration: '3s'}}></div>
+              <div className="absolute top-72 left-40 w-4 h-4 bg-purple-300/40 rounded-full animate-pulse" style={{animationDelay: '1s', animationDuration: '4s'}}></div>
+              <div className="absolute bottom-32 right-40 w-4 h-4 bg-blue-200/30 rounded-full animate-pulse" style={{animationDelay: '2s', animationDuration: '3.5s'}}></div>
+              <div className="absolute bottom-20 left-1/2 w-4 h-4 bg-white/30 rounded-full animate-pulse" style={{animationDelay: '0.5s', animationDuration: '5s'}}></div>
+              
+              {/* Small particles */}
+              <div className="absolute top-16 left-1/2 w-3 h-3 bg-white/20 rounded-full animate-ping" style={{animationDelay: '0s', animationDuration: '4s'}}></div>
+              <div className="absolute top-80 right-16 w-2 h-2 bg-blue-100/35 rounded-full animate-ping" style={{animationDelay: '1s', animationDuration: '3s'}}></div>
+              <div className="absolute bottom-16 left-16 w-3 h-3 bg-purple-200/25 rounded-full animate-ping" style={{animationDelay: '2s', animationDuration: '5s'}}></div>
+              <div className="absolute bottom-80 right-1/3 w-2 h-2 bg-white/30 rounded-full animate-ping" style={{animationDelay: '1.5s', animationDuration: '4.5s'}}></div>
+              
+              {/* Floating particles with custom animation */}
+              <div className="absolute top-24 right-12 w-6 h-6 bg-gradient-to-r from-blue-400/15 to-purple-400/15 rounded-full" style={{animation: 'float 8s ease-in-out infinite'}}></div>
+              <div className="absolute top-56 left-12 w-8 h-8 bg-gradient-to-r from-purple-300/10 to-blue-300/10 rounded-full" style={{animation: 'float 10s ease-in-out infinite reverse'}}></div>
+              <div className="absolute bottom-24 right-1/4 w-6 h-6 bg-gradient-to-r from-white/15 to-blue-200/15 rounded-full" style={{animation: 'float 9s ease-in-out infinite'}}></div>
+              <div className="absolute bottom-56 left-1/4 w-4 h-4 bg-gradient-to-r from-blue-100/25 to-purple-100/25 rounded-full" style={{animation: 'float 7s ease-in-out infinite reverse'}}></div>
+            </div>
+          </div>
+          
+          {/* Content with higher z-index */}
+          <div className="relative z-10">
+            {children}
+          </div>
         </main>
       </div>
     </div>

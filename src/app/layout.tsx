@@ -1,12 +1,15 @@
-import './globals.css'; // ✅ add this line at the top
+import { Inter } from 'next/font/google';
+import './globals.css';
 import { AuthProvider } from '@/contexts/AuthContext';
-import { SearchHistoryProvider } from '@/contexts/SearchHistoryContext';
 import { ModalProvider } from '@/contexts/ModalContext';
+import { SearchHistoryProvider } from '@/contexts/SearchHistoryContext';
 import AuthModal from '@/components/AuthModal';
 
+const inter = Inter({ subsets: ['latin'] });
+
 export const metadata = {
-  title: 'Image Extractor',
-  description: 'Extract images from any public website',
+  title: 'ImageGrabber - Extract Images From Any Website',
+  description: 'Easily extract and download all images from any website with our powerful image scraping tool. Perfect for designers, marketers, and developers.',
 };
 
 export default function RootLayout({
@@ -19,7 +22,7 @@ export default function RootLayout({
       <head>
         <link rel="icon" href="/favicon.png" type="image/png" />
       </head>
-      <body className="text-gray-200 min-h-screen">
+      <body className={inter.className}>
         <AuthProvider>
           <SearchHistoryProvider>
             <ModalProvider>
