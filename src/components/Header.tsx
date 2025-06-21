@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { LogOut, Settings, User, History } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useModal } from '@/contexts/ModalContext';
+import CreditsDisplay from './CreditsDisplay';
 
 export default function Header() {
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -32,8 +33,8 @@ export default function Header() {
              <Link href="/" className="text-sm font-medium text-gray-300 transition-colors hover:text-white">
               Extract
             </Link>
-            <Link href="#" className="text-sm font-medium text-gray-300 transition-colors hover:text-white">
-              Features
+            <Link href="/credits" className="text-sm font-medium text-gray-300 transition-colors hover:text-white">
+              Credits
             </Link>
             <Link href="/pricing" className="text-sm font-medium text-gray-300 transition-colors hover:text-white">
               Pricing
@@ -45,6 +46,9 @@ export default function Header() {
 
           {/* Right Side */}
           <div className="flex items-center gap-4">
+            {/* Credits Display */}
+            <CreditsDisplay />
+            
             {loading ? (
               <div className="h-8 w-8 animate-spin rounded-full border-2 border-gray-600 border-t-blue-500"></div>
             ) : user ? (

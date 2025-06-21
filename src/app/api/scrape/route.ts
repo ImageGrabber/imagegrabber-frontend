@@ -1,7 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { parse, HTMLElement } from 'node-html-parser';
 import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
+
+// Create a service role client for admin operations (if available)
+const supabaseAdmin = process.env.SUPABASE_SERVICE_ROLE_KEY ? createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  }
+) : null;
 
 // Helper function to get image metadata
 async function getImageMetadata(url: string): Promise<{
@@ -213,26 +226,40 @@ export async function POST(request: NextRequest) {
       .eq('id', user.id)
       .single();
 
-    // If profile doesn't exist, try to create one, but if that fails due to RLS, use defaults
+    let hasRealProfile = true;
+
+    // If profile doesn't exist, try to create one using admin client to bypass RLS
     if (profileError && profileError.code === 'PGRST116') {
       console.log('Profile not found, attempting to create one');
-      const { data: newProfile, error: createError } = await supabase
-        .from('profiles')
-        .insert({
-          id: user.id,
-          credits: 10 // Give new users 10 free credits
-        })
-        .select('credits')
-        .single();
+      
+      if (supabaseAdmin) {
+        console.log('Using admin client to create profile');
+        const { data: newProfile, error: createError } = await supabaseAdmin
+          .from('profiles')
+          .insert({
+            id: user.id,
+            credits: 10 // Give new users 10 free credits
+          })
+          .select('credits')
+          .single();
 
-      if (createError) {
-        console.error('Failed to create profile (likely due to RLS):', createError);
+        if (createError) {
+          console.error('Failed to create profile with admin client:', createError);
+          // Use default credits for users without profiles
+          profile = { credits: 10 };
+          hasRealProfile = false;
+          console.log('Using default credits for user without profile');
+        } else {
+          profile = newProfile;
+          hasRealProfile = true;
+          console.log('Profile created successfully with admin client');
+        }
+      } else {
+        console.log('No admin client available, using default credits');
         // Use default credits for users without profiles
         profile = { credits: 10 };
+        hasRealProfile = false;
         console.log('Using default credits for user without profile');
-      } else {
-        profile = newProfile;
-        console.log('Profile created successfully');
       }
     } else if (profileError || !profile) {
       console.error('Profile error:', profileError);
@@ -322,18 +349,20 @@ export async function POST(request: NextRequest) {
         console.log('Deducting credit for successful scrape');
         newCreditTotal = profile.credits - 1;
         
-        // Only update database if user has a real profile (not default)
-        if (profile.credits !== 10 || user.id) {
-          const { error: updateError } = await supabase
+        // Only update database if user has a real profile (not using fallback defaults)
+        if (hasRealProfile && supabaseAdmin) {
+          const { error: updateError } = await supabaseAdmin
             .from('profiles')
             .update({ credits: newCreditTotal })
             .eq('id', user.id);
           if (updateError) {
-            console.log('Could not update credits in database (user may not have profile):', updateError);
-            // Don't fail the request if we can't update credits
+            console.error('Could not update credits in database:', updateError);
+            // Don't fail the request if we can't update credits, but log it as an error
+          } else {
+            console.log('Successfully updated credits to', newCreditTotal);
           }
         } else {
-          console.log('User has default profile, not updating database');
+          console.log('User has fallback profile or no admin client, not updating database');
         }
       } else {
         console.log('No images found, not deducting credit');

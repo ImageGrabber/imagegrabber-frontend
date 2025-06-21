@@ -145,7 +145,8 @@ export default function Home() {
       const data = await res.json();
       setImages(data.images);
       
-      // Note: Credits are handled by the API, no need to update local state
+      // Trigger credits refresh
+      window.dispatchEvent(new CustomEvent('creditsUpdated'));
 
       // Update history with image count if user is logged in
       if (user) {

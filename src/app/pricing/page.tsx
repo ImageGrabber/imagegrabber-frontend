@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Header from '@/components/Header';
 import { Check } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useModal } from '@/contexts/ModalContext';
 import AuthModal from '@/components/AuthModal';
 import Notification from '@/components/Notification';
 
@@ -14,7 +15,7 @@ const paidTiers = [
     price: '$9',
     description: 'Perfect for individuals and small projects.',
     features: [
-      '200 image extractions',
+      'Unlimited image extractions',
       'WordPress integration',
       'Standard email support',
       'No ads',
@@ -27,7 +28,7 @@ const paidTiers = [
     price: '$29',
     description: 'Ideal for growing businesses and agencies.',
     features: [
-      '1,000 image extractions',
+      'Unlimited image extractions',
       'WordPress & Shopify integration',
       'Priority email support',
       'Bulk push & advanced features',
@@ -40,7 +41,7 @@ const paidTiers = [
     price: '$99',
     description: 'For large-scale operations and teams.',
     features: [
-      '5,000 image extractions',
+      'Unlimited image extractions',
       'All integrations',
       'Dedicated account manager',
       'API Access (coming soon)',
@@ -51,15 +52,13 @@ const paidTiers = [
 
 export default function PricingPage() {
   const { user } = useAuth();
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  const { openModal } = useModal();
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [notification, setNotification] = useState({ isVisible: false, type: 'success' as 'success' | 'error', title: '', message: '' });
 
   const handleCheckout = async (planId: string, planName: string) => {
     if (!user) {
-      setAuthMode('login');
-      setShowAuthModal(true);
+      openModal('login');
       return;
     }
 
@@ -104,14 +103,10 @@ export default function PricingPage() {
       setLoadingPlan(null);
     }
   };
-  
-  const openAuthModal = (mode: 'login' | 'register') => {
-    setAuthMode(mode);
-    setShowAuthModal(true);
-  };
+
 
   return (
-    <div className="bg-white">
+    <div className="min-h-screen bg-gray-900">
       <Header />
       <Notification
         isVisible={notification.isVisible}
@@ -120,11 +115,7 @@ export default function PricingPage() {
         message={notification.message}
         onClose={() => setNotification({ ...notification, isVisible: false })}
       />
-      <AuthModal
-        isOpen={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-        initialMode={authMode}
-      />
+      <AuthModal />
       <main className="isolate">
         <div className="relative pt-24">
           <div className="absolute inset-x-0 -top-40 -z-10 transform-gpu overflow-hidden blur-3xl sm:-top-80" aria-hidden="true">
@@ -139,30 +130,30 @@ export default function PricingPage() {
           <div className="py-24 sm:py-32">
             <div className="mx-auto max-w-7xl px-6 lg:px-8">
               <div className="mx-auto max-w-2xl text-center">
-                <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl">Simple, predictable pricing</h1>
-                <p className="mt-6 text-lg leading-8 text-gray-600">
-                  Start with 50 free credits. Upgrade when you need more. One-time purchases, not a subscription.
+                <h1 className="text-4xl font-bold tracking-tight text-white sm:text-6xl">Simple, predictable pricing</h1>
+                <p className="mt-6 text-lg leading-8 text-gray-300">
+                  Start with 10 free credits. Upgrade to a monthly plan for unlimited extractions and premium features.
                 </p>
               </div>
               <div className="mx-auto mt-16 grid max-w-2xl grid-cols-1 gap-8 lg:max-w-7xl lg:grid-cols-4">
                 {/* Free Plan Card */}
-                <div className="flex flex-col justify-between rounded-3xl p-8 shadow-xl ring-1 ring-gray-200">
+                <div className="flex flex-col justify-between rounded-3xl p-8 shadow-xl bg-gray-800 border border-gray-700">
                     <div>
-                        <h3 className="text-2xl font-bold tracking-tight text-gray-900">Free</h3>
-                        <p className="mt-4 text-sm leading-6 text-gray-600">For personal use or to try out our platform.</p>
+                        <h3 className="text-2xl font-bold tracking-tight text-white">Free</h3>
+                        <p className="mt-4 text-sm leading-6 text-gray-300">For personal use or to try out our platform.</p>
                         <p className="mt-6 flex items-baseline gap-x-1">
-                            <span className="text-4xl font-bold tracking-tight text-gray-900">50</span>
-                            <span className="text-sm font-semibold leading-6 text-gray-600">free credits</span>
+                            <span className="text-4xl font-bold tracking-tight text-white">10</span>
+                            <span className="text-sm font-semibold leading-6 text-gray-400">free credits</span>
                         </p>
-                        <ul role="list" className="mt-8 space-y-3 text-sm leading-6 text-gray-600">
-                            <li className="flex gap-x-3"><Check className="h-6 w-5 flex-none text-orange-500" />Up to 50 image extractions</li>
-                            <li className="flex gap-x-3"><Check className="h-6 w-5 flex-none text-orange-500" />Basic image analysis</li>
-                            <li className="flex gap-x-3"><Check className="h-6 w-5 flex-none text-orange-500" />Community support</li>
+                        <ul role="list" className="mt-8 space-y-3 text-sm leading-6 text-gray-300">
+                            <li className="flex gap-x-3"><Check className="h-6 w-5 flex-none text-blue-400" />Up to 10 image extractions</li>
+                            <li className="flex gap-x-3"><Check className="h-6 w-5 flex-none text-blue-400" />Basic image analysis</li>
+                            <li className="flex gap-x-3"><Check className="h-6 w-5 flex-none text-blue-400" />Community support</li>
                         </ul>
                     </div>
                     <button
-                        onClick={() => openAuthModal('register')}
-                        className="mt-8 block rounded-md py-2 px-3 text-center text-sm font-semibold leading-6 bg-gray-800 text-white hover:bg-gray-900 focus-visible:outline-gray-900"
+                        onClick={() => openModal('register')}
+                        className="mt-8 block rounded-full py-2 px-3 text-center text-sm font-semibold leading-6 bg-blue-600/80 border border-blue-500/50 text-white hover:bg-blue-500/80 transition-all duration-200"
                     >
                         Sign up for free
                     </button>
@@ -172,19 +163,19 @@ export default function PricingPage() {
                 {paidTiers.map((tier) => (
                   <div
                     key={tier.name}
-                    className="flex flex-col justify-between rounded-3xl p-8 shadow-xl ring-1 ring-gray-200"
+                    className="flex flex-col justify-between rounded-3xl p-8 shadow-xl bg-gray-800 border border-gray-700"
                   >
                     <div>
-                      <h3 className="text-2xl font-bold tracking-tight text-gray-900">{tier.name}</h3>
-                      <p className="mt-4 text-sm leading-6 text-gray-600">{tier.description}</p>
+                      <h3 className="text-2xl font-bold tracking-tight text-white">{tier.name}</h3>
+                      <p className="mt-4 text-sm leading-6 text-gray-300">{tier.description}</p>
                       <p className="mt-6 flex items-baseline gap-x-1">
-                        <span className="text-4xl font-bold tracking-tight text-gray-900">{tier.price}</span>
-                        <span className="text-sm font-semibold leading-6 text-gray-600">/ one-time</span>
+                        <span className="text-4xl font-bold tracking-tight text-white">{tier.price}</span>
+                        <span className="text-sm font-semibold leading-6 text-gray-400">/ month</span>
                       </p>
-                      <ul role="list" className="mt-8 space-y-3 text-sm leading-6 text-gray-600">
+                      <ul role="list" className="mt-8 space-y-3 text-sm leading-6 text-gray-300">
                         {tier.features.map((feature) => (
                           <li key={feature} className="flex gap-x-3">
-                            <Check className="h-6 w-5 flex-none text-orange-500" aria-hidden="true" />
+                            <Check className="h-6 w-5 flex-none text-blue-400" aria-hidden="true" />
                             {feature}
                           </li>
                         ))}
@@ -193,7 +184,7 @@ export default function PricingPage() {
                     <button
                       onClick={() => handleCheckout(tier.id, tier.name)}
                       disabled={loadingPlan === tier.name}
-                      className="mt-8 block rounded-md py-2 px-3 text-center text-sm font-semibold leading-6 bg-orange-500 text-white hover:bg-orange-600 focus-visible:outline-orange-600 disabled:bg-orange-300"
+                      className="mt-8 block rounded-full py-2 px-3 text-center text-sm font-semibold leading-6 bg-gray-800/80 border border-gray-600/50 text-gray-200 hover:bg-gray-700/80 transition-all duration-200 disabled:opacity-50"
                     >
                       {loadingPlan === tier.name ? 'Processing...' : tier.buttonText}
                     </button>
@@ -201,7 +192,7 @@ export default function PricingPage() {
                 ))}
               </div>
               <p className="mt-8 text-center text-sm text-gray-500">
-                Local taxes may be added during the checkout. All prices in USD.
+                Monthly billing. Cancel anytime. Local taxes may be added during the checkout. All prices in USD.
               </p>
             </div>
           </div>
