@@ -8,6 +8,7 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  refreshSession: () => Promise<void>;
   signUp: (email: string, password: string) => Promise<any>;
   signIn: (email: string, password: string) => Promise<any>;
   signOut: () => Promise<void>;
@@ -63,10 +64,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await supabase.auth.signOut();
   };
 
+  const refreshSession = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    setSession(session);
+    setUser(session?.user ?? null);
+    setLoading(false);
+  };
+
   const value = {
     user,
     session,
     loading,
+    refreshSession,
     signUp,
     signIn,
     signOut,
