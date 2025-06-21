@@ -6,9 +6,10 @@ import { useAuth } from './AuthContext';
 export interface SearchHistoryItem {
   id: string;
   url: string;
-  timestamp: Date;
-  imageCount?: number;
+  created_at: string;
+  image_count?: number;
   title?: string;
+  user_id?: string;
 }
 
 interface SearchHistoryContextType {
@@ -24,61 +25,142 @@ export const SearchHistoryProvider: React.FC<{ children: React.ReactNode }> = ({
   const [history, setHistory] = useState<SearchHistoryItem[]>([]);
   const { user } = useAuth();
 
-  // Load history from localStorage when user changes
+  // Load history from database when user changes
   useEffect(() => {
-    if (user) {
-      const savedHistory = localStorage.getItem(`search_history_${user.id}`);
-      if (savedHistory) {
-        try {
-          const parsedHistory = JSON.parse(savedHistory).map((item: any) => ({
-            ...item,
-            timestamp: new Date(item.timestamp)
-          }));
-          setHistory(parsedHistory);
-        } catch (error) {
-          console.error('Error loading search history:', error);
-        }
+    const fetchHistory = async () => {
+      if (!user) {
+        console.log('SearchHistory: No user, clearing history');
+        setHistory([]);
+        return;
       }
-    } else {
-      setHistory([]);
-    }
-  }, [user]);
 
-  // Save history to localStorage whenever it changes
-  useEffect(() => {
-    if (user && history.length > 0) {
-      localStorage.setItem(`search_history_${user.id}`, JSON.stringify(history));
-    }
-  }, [history, user]);
-
-  const addToHistory = (url: string, imageCount?: number, title?: string) => {
-    if (!user) return;
-
-    const newItem: SearchHistoryItem = {
-      id: Date.now().toString(),
-      url,
-      timestamp: new Date(),
-      imageCount,
-      title: title || new URL(url).hostname
+      try {
+        const { supabase } = await import('@/lib/supabase');
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session) return;
+        
+        const response = await fetch('/api/search-history', {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          credentials: 'include',
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log('SearchHistory: Loaded', data.history.length, 'items from database');
+          setHistory(data.history || []);
+        } else {
+          console.error('Failed to fetch search history:', response.statusText);
+          setHistory([]);
+        }
+      } catch (error) {
+        console.error('Error loading search history:', error);
+        setHistory([]);
+      }
     };
 
-    setHistory(prev => {
-      // Remove duplicate URLs and keep only the latest entry
-      const filtered = prev.filter(item => item.url !== url);
-      // Add new item at the beginning and keep only the last 50 items
-      return [newItem, ...filtered].slice(0, 50);
-    });
-  };
+    fetchHistory();
+  }, [user]);
 
-  const clearHistory = () => {
-    setHistory([]);
-    if (user) {
-      localStorage.removeItem(`search_history_${user.id}`);
+  const addToHistory = async (url: string, imageCount?: number, title?: string) => {
+    if (!user) {
+      console.log('SearchHistory: No user, not adding to history');
+      return;
+    }
+
+    try {
+      const { supabase } = await import('@/lib/supabase');
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) return;
+      
+      const response = await fetch('/api/search-history', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          url,
+          title: title || new URL(url).hostname,
+          imageCount: imageCount || 0
+        })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('SearchHistory: Added to database:', data.history);
+        
+        // Update local state - remove duplicates and add new item at the beginning
+        setHistory(prev => {
+          const filtered = prev.filter(item => item.url !== url);
+          return [data.history, ...filtered].slice(0, 50);
+        });
+      } else {
+        console.error('Failed to add search history:', response.statusText);
+      }
+    } catch (error) {
+      console.error('Error adding to search history:', error);
     }
   };
 
-  const removeFromHistory = (id: string) => {
-    setHistory(prev => prev.filter(item => item.id !== id));
+  const clearHistory = async () => {
+    if (!user) return;
+    
+    try {
+      const { supabase } = await import('@/lib/supabase');
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) return;
+      
+      const response = await fetch('/api/search-history', {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        credentials: 'include',
+      });
+      
+      if (response.ok) {
+        console.log('SearchHistory: Cleared all history from database');
+        setHistory([]);
+      } else {
+        console.error('Failed to clear search history:', response.statusText);
+      }
+    } catch (error) {
+      console.error('Error clearing search history:', error);
+    }
+  };
+
+  const removeFromHistory = async (id: string) => {
+    if (!user) return;
+    
+    try {
+      const { supabase } = await import('@/lib/supabase');
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) return;
+      
+      const response = await fetch(`/api/search-history?id=${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        credentials: 'include',
+      });
+      
+      if (response.ok) {
+        console.log('SearchHistory: Removed item from database:', id);
+        setHistory(prev => prev.filter(item => item.id !== id));
+      } else {
+        console.error('Failed to remove search history item:', response.statusText);
+      }
+    } catch (error) {
+      console.error('Error removing search history item:', error);
+    }
   };
 
   const value = {
