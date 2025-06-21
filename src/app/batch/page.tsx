@@ -1,9 +1,14 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo, ReactNode } from 'react';
+import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
+import { useModal } from '@/contexts/ModalContext';
 import DashboardLayout from '@/components/DashboardLayout';
-import { Upload, FileText, Globe, Download, AlertCircle, CheckCircle, Clock, X } from 'lucide-react';
+import ImageGrid from '@/components/ImageGrid';
+import ImageFilterBar, { FilterOptions } from '@/components/ImageFilterBar';
+import { Image } from '../page';
+import { Upload, FileText, Globe, Download, AlertCircle, CheckCircle, Clock, X, ChevronDown, ChevronUp, Link as LinkIcon } from 'lucide-react';
 
 interface BatchJob {
   id: string;
@@ -21,19 +26,104 @@ interface BatchResult {
   status: 'success' | 'failed';
   imageCount?: number;
   error?: string;
-  images?: any[];
+  images?: Image[];
 }
 
 export default function BatchPage() {
   const { user } = useAuth();
+  const { openModal } = useModal();
   const [jobs, setJobs] = useState<BatchJob[]>([]);
   const [dragActive, setDragActive] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [viewingJobId, setViewingJobId] = useState<string | null>(null);
+  const [selectedLinks, setSelectedLinks] = useState<string[]>([]);
+  const [filters, setFilters] = useState<FilterOptions>({
+    types: [],
+    qualities: [],
+    sortBy: 'filename',
+    sortOrder: 'asc'
+  });
+
   if (!user) {
     return <DashboardLayout><div /></DashboardLayout>;
   }
+
+  const viewingJob = useMemo(() => {
+    if (!viewingJobId) return null;
+    return jobs.find(j => j.id === viewingJobId) || null;
+  }, [jobs, viewingJobId]);
+  
+  const successfulLinks = useMemo(() => {
+    if (!viewingJob) return [];
+    return viewingJob.results
+        .filter(r => r.status === 'success' && r.images && r.images.length > 0)
+        .map(r => r.url);
+  }, [viewingJob]);
+  
+  const imageCount = useMemo(() => {
+    if (!viewingJob) return 0;
+    return viewingJob.results.reduce((acc, r) => acc + (r.imageCount || 0), 0);
+  }, [viewingJob]);
+
+  const filteredGroupedResults = useMemo(() => {
+    if (!viewingJob) return [];
+
+    const sortFn = (a: Image, b: Image) => {
+        let aValue: any, bValue: any;
+        switch (filters.sortBy) {
+            case 'filename': aValue = a.filename.toLowerCase(); bValue = b.filename.toLowerCase(); break;
+            case 'size': aValue = a.size || 0; bValue = b.size || 0; break;
+            case 'width': aValue = a.width || 0; bValue = b.width || 0; break;
+            case 'height': aValue = a.height || 0; bValue = b.height || 0; break;
+            default: return 0;
+        }
+        if (aValue < bValue) return filters.sortOrder === 'asc' ? -1 : 1;
+        if (aValue > bValue) return filters.sortOrder === 'asc' ? 1 : -1;
+        return 0;
+    };
+
+    return viewingJob.results
+        .filter(result => 
+            result.status === 'success' && 
+            result.images && 
+            result.images.length > 0 &&
+            selectedLinks.includes(result.url)
+        )
+        .map(result => {
+            let filtered = [...result.images!];
+
+            // Apply filters
+            if (filters.minSize) {
+                filtered = filtered.filter(img => (img.size || 0) >= filters.minSize!);
+            }
+            if (filters.maxSize) {
+                filtered = filtered.filter(img => (img.size || 0) <= filters.maxSize!);
+            }
+            if (filters.types.length > 0) {
+                filtered = filtered.filter(img => img.type && filters.types.includes(img.type));
+            }
+            if (filters.qualities.length > 0) {
+                filtered = filtered.filter(img => img.quality && filters.qualities.includes(img.quality));
+            }
+
+            // Apply sorting
+            filtered.sort(sortFn);
+            
+            return { ...result, images: filtered };
+        })
+        .filter(result => result.images.length > 0);
+
+  }, [viewingJob, filters, selectedLinks]);
+
+  const flatFilteredImages = useMemo(() => {
+    return filteredGroupedResults.flatMap(r => r.images || []);
+  }, [filteredGroupedResults]);
+  
+  const filteredCount = useMemo(() => {
+    return flatFilteredImages.length;
+  }, [flatFilteredImages]);
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -181,11 +271,22 @@ export default function BatchPage() {
           // Transaction is now recorded automatically in the scrape API
           
         } else {
-          const errorData = await res.json().catch(() => ({ error: 'Unknown error' }));
+          let errorMessage = 'Extraction failed';
+          try {
+            const errorData = await res.json();
+            if (res.status === 402) {
+               errorMessage = errorData.error || 'You are out of credits. Please upgrade to continue.';
+            } else {
+               errorMessage = errorData.error || 'Extraction failed';
+            }
+          } catch (e) {
+            errorMessage = 'Extraction failed with a non-JSON response.';
+          }
+          
           results.push({
             url,
             status: 'failed',
-            error: errorData.error || 'Extraction failed',
+            error: errorMessage,
           });
         }
       } catch (error) {
@@ -206,24 +307,63 @@ export default function BatchPage() {
               ...j, 
               progress,
               completedUrls,
-              results: [...results],
             }
           : j
       ));
 
       // Small delay to prevent overwhelming the server
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 500));
     }
 
-    // Mark as completed
+    // Mark as completed and set final results
     setJobs(prev => prev.map(j => 
       j.id === job.id 
-        ? { ...j, status: 'completed' as const }
+        ? { ...j, status: 'completed' as const, results: results }
         : j
     ));
 
     // Trigger credits refresh
     window.dispatchEvent(new CustomEvent('creditsUpdated'));
+  };
+
+  const handleToggleImages = (jobId: string) => {
+    if (viewingJobId === jobId) {
+      setViewingJobId(null);
+      setSelectedLinks([]);
+    } else {
+      setViewingJobId(jobId);
+      // Reset filters when viewing a new job
+      setFilters({
+        types: [],
+        qualities: [],
+        sortBy: 'filename',
+        sortOrder: 'asc'
+      });
+      // By default, all links are selected when first opening
+      const job = jobs.find(j => j.id === jobId);
+      if (job) {
+          const allSuccessfulLinks = job.results
+              .filter(r => r.status === 'success' && r.images && r.images.length > 0)
+              .map(r => r.url);
+          setSelectedLinks(allSuccessfulLinks);
+      }
+    }
+  };
+
+  const handleLinkSelectionChange = (link: string) => {
+      setSelectedLinks(prev => 
+          prev.includes(link) 
+              ? prev.filter(l => l !== link)
+              : [...prev, link]
+      );
+  };
+
+  const handleSelectAllLinks = () => {
+      if (selectedLinks.length === successfulLinks.length) {
+          setSelectedLinks([]);
+      } else {
+          setSelectedLinks(successfulLinks);
+      }
   };
 
   const downloadResults = (job: BatchJob) => {
@@ -276,6 +416,50 @@ export default function BatchPage() {
         return <CheckCircle className="h-4 w-4 text-green-400" />;
       case 'failed':
         return <AlertCircle className="h-4 w-4 text-red-400" />;
+    }
+  };
+
+  /* --------------- DOWNLOAD ONE -------------- */
+  const handleDownload = async (url: string, filename: string) => {
+    try {
+      const res = await fetch(`/api/download?url=${encodeURIComponent(url)}`);
+      if (!res.ok) throw new Error('Download failed');
+      const blob = await res.blob();
+      const link = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = link;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      URL.revokeObjectURL(link);
+      a.remove();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  /* --------------- DOWNLOAD ALL -------------- */
+  const handleDownloadAll = async () => {
+    if (!flatFilteredImages.length) return;
+
+    try {
+      const res = await fetch('/api/download-all', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ images: flatFilteredImages }),
+      });
+      if (!res.ok) throw new Error('Download failed');
+      const blob = await res.blob();
+      const link = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = link;
+      a.download = 'images.zip';
+      document.body.appendChild(a);
+      a.click();
+      URL.revokeObjectURL(link);
+      a.remove();
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -358,22 +542,27 @@ export default function BatchPage() {
                       </div>
                     </div>
                     
-                    <div className="flex items-center gap-2">
-                      {job.status === 'completed' && (
-                        <button
-                          onClick={() => downloadResults(job)}
-                          className="flex items-center gap-2 rounded-full bg-blue-600/80 border border-blue-500/50 px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:bg-blue-500/80"
-                        >
-                          <Download className="h-4 w-4" />
-                          Download Report
-                        </button>
-                      )}
-                      
+                    <div className="flex items-center gap-4">
+                      <button
+                        onClick={() => handleToggleImages(job.id)}
+                        className="flex items-center gap-2 text-sm font-semibold text-gray-300 hover:text-white px-3 py-1.5 rounded-md bg-white/5 hover:bg-white/10 transition-colors"
+                        title={viewingJobId === job.id ? "Hide Images" : "View Images"}
+                      >
+                        {viewingJobId === job.id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                        <span>{viewingJobId === job.id ? "Hide" : "View"} Images</span>
+                      </button>
+                      <button
+                        onClick={() => downloadResults(job)}
+                        className="flex items-center gap-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-md transition-colors"
+                      >
+                        <Download size={16} />
+                        <span>Download Report</span>
+                      </button>
                       <button
                         onClick={() => removeJob(job.id)}
-                        className="flex items-center justify-center h-8 w-8 rounded-full text-gray-400 hover:bg-red-600/20 hover:text-red-300 transition-all duration-200"
+                        className="text-gray-500 hover:text-white transition-colors p-1.5 rounded-md hover:bg-white/10"
                       >
-                        <X className="h-4 w-4" />
+                        <X size={18} />
                       </button>
                     </div>
                   </div>
@@ -398,36 +587,106 @@ export default function BatchPage() {
 
                   {/* Results Summary */}
                   {job.results.length > 0 && (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="rounded-lg bg-gray-800/50 p-4">
-                        <div className="flex items-center gap-2 mb-2">
-                          <CheckCircle className="h-4 w-4 text-green-400" />
-                          <span className="text-sm font-medium text-gray-200">Successful</span>
+                    <div className="grid grid-cols-3 gap-4 mt-4 text-center">
+                      <div className="bg-gray-800/50 p-4 rounded-lg">
+                        <div className="flex items-center justify-center gap-2">
+                          <CheckCircle className="text-green-500" size={20} />
+                          <span className="font-semibold text-white text-lg">{job.results.filter(r => r.status === 'success').length}</span>
                         </div>
-                        <p className="text-lg font-semibold text-green-400">
-                          {job.results.filter(r => r.status === 'success').length}
-                        </p>
+                        <div className="text-sm text-gray-400 mt-1">Successful</div>
                       </div>
-                      
-                      <div className="rounded-lg bg-gray-800/50 p-4">
-                        <div className="flex items-center gap-2 mb-2">
-                          <AlertCircle className="h-4 w-4 text-red-400" />
-                          <span className="text-sm font-medium text-gray-200">Failed</span>
+                      <div className="bg-gray-800/50 p-4 rounded-lg">
+                        <div className="flex items-center justify-center gap-2">
+                          <AlertCircle className="text-red-500" size={20} />
+                          <span className="font-semibold text-white text-lg">{job.results.filter(r => r.status === 'failed').length}</span>
                         </div>
-                        <p className="text-lg font-semibold text-red-400">
-                          {job.results.filter(r => r.status === 'failed').length}
-                        </p>
+                        <div className="text-sm text-gray-400 mt-1">Failed</div>
                       </div>
-                      
-                      <div className="rounded-lg bg-gray-800/50 p-4">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Globe className="h-4 w-4 text-blue-400" />
-                          <span className="text-sm font-medium text-gray-200">Total Images</span>
+                      <div className="bg-gray-800/50 p-4 rounded-lg">
+                        <div className="flex items-center justify-center gap-2">
+                          <Globe className="text-blue-500" size={20} />
+                          <span className="font-semibold text-white text-lg">{job.results.filter(r => r.status === 'success').reduce((acc, r) => acc + (r.imageCount || 0), 0)}</span>
                         </div>
-                        <p className="text-lg font-semibold text-blue-400">
-                          {job.results.reduce((sum, r) => sum + (r.imageCount || 0), 0)}
-                        </p>
+                        <div className="text-sm text-gray-400 mt-1">Total Images</div>
                       </div>
+                    </div>
+                  )}
+
+                  {viewingJobId === job.id && (
+                    <div className="mt-6 border-t border-gray-700 pt-6">
+                      {imageCount > 0 ? (
+                        <>
+                          <ImageFilterBar
+                            onFilterChange={setFilters}
+                            imageCount={imageCount}
+                            filteredCount={filteredCount}
+                            onDownloadAll={handleDownloadAll}
+                            filteredAndSortedImages={flatFilteredImages}
+                          />
+
+                          {/* Link Filter Section */}
+                          <div className="my-6 p-4 border border-gray-700/50 rounded-lg bg-gray-900/50">
+                              <h3 className="text-md font-semibold text-gray-200 mb-3 flex items-center gap-2">
+                                  <LinkIcon size={18} />
+                                  Filter by Source URL
+                              </h3>
+                              <div className="flex items-center mb-3">
+                                  <input
+                                      type="checkbox"
+                                      id="select-all-links"
+                                      checked={selectedLinks.length === successfulLinks.length}
+                                      onChange={handleSelectAllLinks}
+                                      className="rounded border-gray-600 bg-gray-800 text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-900"
+                                  />
+                                  <label htmlFor="select-all-links" className="ml-2 text-sm text-gray-300 font-medium">
+                                      Select All ({selectedLinks.length} / {successfulLinks.length})
+                                  </label>
+                              </div>
+                              <div className="max-h-40 overflow-y-auto space-y-2 pr-2">
+                                  {successfulLinks.map(link => (
+                                      <div key={link} className="flex items-center">
+                                          <input
+                                              type="checkbox"
+                                              id={`link-${link}`}
+                                              checked={selectedLinks.includes(link)}
+                                              onChange={() => handleLinkSelectionChange(link)}
+                                              className="rounded border-gray-600 bg-gray-800 text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-900"
+                                          />
+                                          <label htmlFor={`link-${link}`} className="ml-2 text-sm text-gray-400 break-all truncate" title={link}>
+                                              {link}
+                                          </label>
+                                      </div>
+                                  ))}
+                              </div>
+                          </div>
+
+                         
+
+                          {filteredGroupedResults.length > 0 ? (
+                            filteredGroupedResults.map(result => (
+                              <div key={result.url} className="mb-10 mt-2">
+                                <div className="pb-4 border-b border-gray-700 mb-4">
+                                    <h3 className="text-lg font-semibold text-gray-200 break-all">{result.url}</h3>
+                                    <p className="text-sm text-gray-400">{result.images!.length} images found</p>
+                                </div>
+                                <ImageGrid 
+                                    images={result.images!} 
+                                    onDownload={handleDownload} 
+                                    onAuthRequired={() => openModal('login', 'Please log in or register to push images to your integrations.')}
+                                />
+                              </div>
+                            ))
+                          ) : (
+                            <div className="text-center py-8 text-gray-400">
+                              No images match the current filters.
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <div className="text-center py-8 text-gray-400">
+                          No images found for this batch job.
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

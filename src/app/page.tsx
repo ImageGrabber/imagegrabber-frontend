@@ -224,7 +224,7 @@ export default function Home() {
           {/* Search Section - Clean and functional */}
           <div className="mb-8">
             <div className="max-w-4xl mx-auto">
-              <div className="mb-6">
+              <div className="mt-10 mb-6">
                 <h1 className="text-2xl font-semibold text-white mb-2">Extract Images</h1>
                 <p className="text-gray-400">Enter a website URL to extract all images</p>
               </div>
