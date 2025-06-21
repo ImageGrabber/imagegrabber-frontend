@@ -16,12 +16,16 @@ interface ImageFilterBarProps {
   onFilterChange: (filters: FilterOptions) => void;
   imageCount: number;
   filteredCount: number;
+  onDownloadAll: () => void;
+  filteredAndSortedImages: any[];
 }
 
 export default function ImageFilterBar({ 
   onFilterChange, 
   imageCount, 
-  filteredCount 
+  filteredCount,
+  onDownloadAll,
+  filteredAndSortedImages
 }: ImageFilterBarProps) {
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<FilterOptions>({
@@ -83,8 +87,21 @@ export default function ImageFilterBar({
           )}
         </div>
 
-        <div className="text-sm text-gray-300">
-          Showing {filteredCount} of {imageCount} images
+        <div className="flex items-center gap-4">
+          <div className="text-sm text-gray-300">
+            Showing {filteredCount} of {imageCount} images
+          </div>
+          
+          <button
+            onClick={onDownloadAll}
+            disabled={filteredAndSortedImages.length === 0}
+            className="flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-medium transition-all duration-200 bg-gray-800/80 text-gray-200 hover:bg-gray-700/80 border border-gray-600/50 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Download {filteredAndSortedImages.length > 0 ? `Filtered (${filteredAndSortedImages.length})` : 'All'} Images
+          </button>
         </div>
       </div>
 

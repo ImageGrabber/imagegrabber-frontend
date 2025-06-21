@@ -54,11 +54,11 @@ export default function HeroSection({ isLoading, onScrape }: Props) {
           </div>
 
           <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 leading-tight">
-            Professional Image <br /> Management Solutions
+            AI-Powered Image <br /> Management Platform
           </h1>
           <p className="text-lg text-gray-300 max-w-2xl mx-auto mb-10">
-            Streamline your content workflow with intelligent image extraction, 
-            automated resizing, and seamless integration with WordPress, Shopify, and other platforms.
+            Transform your digital asset management with AI-powered content extraction, 
+            automated optimization, and seamless integration across all your business platforms.
           </p>
 
           {/* Search bar */}

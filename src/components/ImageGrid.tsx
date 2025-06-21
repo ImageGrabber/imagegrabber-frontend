@@ -356,22 +356,22 @@ export default function ImageGrid({ images, onDownload, onAuthRequired }: ImageG
   return (
     <div className="space-y-6">
       {/* Selection controls */}
-      <div className="flex items-center justify-between rounded-lg bg-white p-4 shadow-sm">
+      <div className="flex items-center justify-between rounded-lg bg-gray-800/80 border border-gray-600/50 p-4 shadow-sm">
         <div className="flex items-center gap-4">
           <button
             onClick={handleSelectAll}
-            className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-800"
+            className="flex items-center gap-2 text-sm text-gray-200 hover:text-white transition-colors"
           >
             <input
               type="checkbox"
               checked={selectedImages.size === images.length && images.length > 0}
               onChange={() => {}} // Handled by button click
-              className="h-4 w-4 rounded border-gray-300 text-orange-500 focus:ring-orange-500"
+              className="h-4 w-4 rounded border-gray-600 bg-gray-800 text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-900"
             />
             {selectedImages.size === images.length && images.length > 0 ? 'Deselect All' : 'Select All'}
           </button>
           {selectedImages.size > 0 && (
-            <span className="text-sm text-gray-600">
+            <span className="text-sm text-gray-300">
               {selectedImages.size} image{selectedImages.size !== 1 ? 's' : ''} selected
             </span>
           )}
@@ -382,11 +382,11 @@ export default function ImageGrid({ images, onDownload, onAuthRequired }: ImageG
             <button
               onClick={handleBulkPushToWordPress}
               disabled={isWordPressPushing || isShopifyPushing}
-              className="flex items-center gap-2 rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-600 disabled:opacity-50"
+              className="flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-all duration-200 bg-gray-800/80 text-gray-200 hover:bg-gray-700/80 border border-gray-600/50 disabled:opacity-50"
               title={user ? "Push selected images to WordPress" : "Login required to push to WordPress"}
             >
               {isWordPressPushing ? (
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-200 border-t-transparent"></div>
               ) : (
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
@@ -397,11 +397,11 @@ export default function ImageGrid({ images, onDownload, onAuthRequired }: ImageG
             <button
               onClick={() => setShowShopifyModal(true)}
               disabled={isWordPressPushing || isShopifyPushing}
-              className="flex items-center gap-2 rounded-lg bg-green-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-green-600 disabled:opacity-50"
+              className="flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-all duration-200 bg-gray-800/80 text-gray-200 hover:bg-gray-700/80 border border-gray-600/50 disabled:opacity-50"
               title={user ? "Push selected images to Shopify" : "Login required to push to Shopify"}
             >
               {isShopifyPushing ? (
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-200 border-t-transparent"></div>
               ) : (
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
@@ -439,14 +439,14 @@ export default function ImageGrid({ images, onDownload, onAuthRequired }: ImageG
       {/* Progress Dialog */}
       {showProgressDialog && progressInfo && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
+          <div className="w-full max-w-md rounded-xl bg-gray-900 border border-gray-700/50 p-6 shadow-xl">
             <div className="flex items-center gap-3 mb-4">
-              <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                <div className="w-4 h-4 animate-spin rounded-full border-2 border-blue-600 border-t-transparent"></div>
+              <div className="flex-shrink-0 w-8 h-8 bg-blue-900/50 border border-blue-700/50 rounded-full flex items-center justify-center">
+                <div className="w-4 h-4 animate-spin rounded-full border-2 border-blue-400 border-t-transparent"></div>
               </div>
-              <h3 className="text-lg font-semibold text-gray-900">
+              <h3 className="text-lg font-semibold text-gray-100">
                 Uploading to {progressInfo.platform}
-                <span className="ml-2 text-blue-600 text-base font-normal">
+                <span className="ml-2 text-blue-400 text-base font-normal">
                   {progressInfo.totalImages > 0 ? `${Math.round((progressInfo.currentIndex / progressInfo.totalImages) * 100)}% complete` : ''}
                 </span>
               </h3>
@@ -455,42 +455,42 @@ export default function ImageGrid({ images, onDownload, onAuthRequired }: ImageG
               {/* Overall Progress */}
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Progress</span>
-                  <span className="text-gray-900 font-medium">
+                  <span className="text-gray-400">Progress</span>
+                  <span className="text-gray-200 font-medium">
                     {progressInfo.currentIndex} of {progressInfo.totalImages}
                   </span>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="w-full bg-gray-700 rounded-full h-2">
                   <div 
-                    className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                    className="bg-blue-500 h-2 rounded-full transition-all duration-300" 
                     style={{width: `${(progressInfo.currentIndex / progressInfo.totalImages) * 100}%`}}
                   ></div>
                 </div>
               </div>
               {/* Current Image */}
-              <div className="flex items-center gap-4 p-4 bg-blue-50 rounded-lg border border-blue-100">
+              <div className="flex items-center gap-4 p-4 bg-gray-800/50 rounded-lg border border-gray-700/50">
                 <img 
                   src={progressInfo.currentImage.url} 
                   alt={progressInfo.currentImage.filename}
-                  className="w-16 h-16 rounded object-cover border border-blue-200"
+                  className="w-16 h-16 rounded object-cover border border-gray-600"
                 />
                 <div className="flex-1 min-w-0">
-                  <p className="text-base font-semibold text-blue-900 truncate">
+                  <p className="text-base font-semibold text-gray-200 truncate">
                     {progressInfo.currentImage.filename}
                   </p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-gray-400">
                     {formatFileSize(progressInfo.currentImage.size || 0)}
                   </p>
                 </div>
               </div>
               {/* Status */}
               <div className="space-y-2">
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-gray-300">
                   {progressInfo.status}
                 </p>
                 {progressInfo.status.includes('Uploading') && (
-                  <div className="w-full bg-gray-200 rounded-full h-1">
-                    <div className="bg-blue-600 h-1 rounded-full animate-pulse" style={{width: '60%'}}></div>
+                  <div className="w-full bg-gray-700 rounded-full h-1">
+                    <div className="bg-blue-500 h-1 rounded-full animate-pulse" style={{width: '60%'}}></div>
                   </div>
                 )}
               </div>
@@ -502,27 +502,27 @@ export default function ImageGrid({ images, onDownload, onAuthRequired }: ImageG
       {/* Result Dialog */}
       {showResultDialog && resultMessage && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
+          <div className="w-full max-w-md rounded-xl bg-gray-900 border border-gray-700/50 p-6 shadow-xl">
             <div className="flex items-center gap-3 mb-4">
               {resultMessage.type === 'success' ? (
-                <div className="flex-shrink-0 w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                  <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div className="flex-shrink-0 w-8 h-8 bg-green-900/50 border border-green-700/50 rounded-full flex items-center justify-center">
+                  <svg className="w-5 h-5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
                 </div>
               ) : (
-                <div className="flex-shrink-0 w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
-                  <svg className="w-5 h-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div className="flex-shrink-0 w-8 h-8 bg-red-900/50 border border-red-700/50 rounded-full flex items-center justify-center">
+                  <svg className="w-5 h-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </div>
               )}
-              <h3 className="text-lg font-semibold text-gray-900">
+              <h3 className="text-lg font-semibold text-gray-100">
                 {resultMessage.title}
               </h3>
             </div>
             
-            <p className="text-gray-600 mb-6">
+            <p className="text-gray-300 mb-6">
               {resultMessage.message}
             </p>
             
@@ -532,7 +532,7 @@ export default function ImageGrid({ images, onDownload, onAuthRequired }: ImageG
                   setShowResultDialog(false);
                   setResultMessage(null);
                 }}
-                className="rounded-lg bg-gray-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-600"
+                className="flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-all duration-200 bg-gray-800/80 text-gray-200 hover:bg-gray-700/80 border border-gray-600/50"
               >
                 Close
               </button>

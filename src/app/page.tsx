@@ -227,20 +227,9 @@ export default function Home() {
               onFilterChange={setFilters}
               imageCount={images.length}
               filteredCount={filteredAndSortedImages.length}
+              onDownloadAll={handleDownloadAll}
+              filteredAndSortedImages={filteredAndSortedImages}
             />
-
-            <div className="mb-8 flex justify-end">
-              <button
-                onClick={handleDownloadAll}
-                disabled={filteredAndSortedImages.length === 0}
-                className="flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-medium transition-all duration-200 bg-gray-800/80 text-gray-200 hover:bg-gray-700/80 border border-gray-600/50 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
-                Download {filteredAndSortedImages.length > 0 ? `Filtered (${filteredAndSortedImages.length})` : 'All'} Images
-              </button>
-            </div>
 
             <ImageGrid 
               images={filteredAndSortedImages} 
