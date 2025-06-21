@@ -3,6 +3,8 @@
 import { useState, useMemo, ReactNode } from 'react';
 import Header from '@/components/Header';
 import HeroSection from '@/components/HeroSection';
+import DashboardLayout from '@/components/DashboardLayout';
+import SearchInput from '@/components/SearchInput';
 import ImageGrid from '@/components/ImageGrid';
 import ImageFilterBar, { FilterOptions } from '@/components/ImageFilterBar';
 import { useAuth } from '@/contexts/AuthContext';
@@ -145,6 +147,31 @@ export default function Home() {
       const data = await res.json();
       setImages(data.images);
       
+      // Record transaction for credits page
+      if (user && data.images.length > 0) {
+        const transaction = {
+          id: Date.now().toString(),
+          type: 'deduction' as const,
+          amount: -1,
+          description: `Image extraction from ${new URL(url).hostname}`,
+          url: url,
+          images_found: data.images.length,
+          created_at: new Date().toISOString(),
+        };
+        
+        // Store transaction in localStorage (temporary solution)
+        const existingTransactions = localStorage.getItem(`transactions_${user.id}`);
+        const transactions = existingTransactions ? JSON.parse(existingTransactions) : [];
+        transactions.unshift(transaction); // Add to beginning
+        
+        // Keep only last 50 transactions
+        if (transactions.length > 50) {
+          transactions.splice(50);
+        }
+        
+        localStorage.setItem(`transactions_${user.id}`, JSON.stringify(transactions));
+      }
+      
       // Trigger credits refresh
       window.dispatchEvent(new CustomEvent('creditsUpdated'));
 
@@ -212,6 +239,62 @@ export default function Home() {
   };
 
   /* ------------------ RENDER ----------------- */
+  // Show dashboard layout for logged-in users
+  if (user) {
+    return (
+      <DashboardLayout>
+        <div className="p-6">
+          {/* Search Section - Clean and functional */}
+          <div className="mb-8">
+            <div className="max-w-4xl mx-auto">
+              <div className="mb-6">
+                <h1 className="text-2xl font-semibold text-white mb-2">Extract Images</h1>
+                <p className="text-gray-400">Enter a website URL to extract all images</p>
+              </div>
+              
+              {/* Search Input with History */}
+              <SearchInput 
+                onScrape={handleScrape}
+                isLoading={isLoading}
+                initialUrl={lastSearchUrl}
+                onUrlChange={setLastSearchUrl}
+              />
+            </div>
+          </div>
+
+          {/* Results area with filters */}
+          {images.length > 0 && (
+            <div className="max-w-6xl mx-auto">
+              {/* Filter Bar */}
+              <ImageFilterBar
+                onFilterChange={setFilters}
+                imageCount={images.length}
+                filteredCount={filteredAndSortedImages.length}
+                onDownloadAll={handleDownloadAll}
+                filteredAndSortedImages={filteredAndSortedImages}
+              />
+
+              <ImageGrid 
+                images={filteredAndSortedImages} 
+                onDownload={handleDownload} 
+                onAuthRequired={handleAuthRequired}
+              />
+            </div>
+          )}
+
+          {error && (
+            <div className="py-8">
+              <div className="mx-auto max-w-xl rounded-2xl bg-red-900/50 border border-red-700/50 p-4 text-center">
+                <p className="text-red-200">{error}</p>
+              </div>
+            </div>
+          )}
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // Show landing page for non-logged-in users
   return (
     <div className="min-h-screen">
       <Header />

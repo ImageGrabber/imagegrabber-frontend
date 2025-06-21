@@ -3,37 +3,24 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
+import DashboardLayout from '@/components/DashboardLayout';
 import { useAuth } from '@/contexts/AuthContext';
+import { useModal } from '@/contexts/ModalContext';
 import { useSearchHistory, SearchHistoryItem } from '@/contexts/SearchHistoryContext';
-import { History, Search, Trash2, ExternalLink, Calendar, Image as ImageIcon } from 'lucide-react';
+import { History, Search, Trash2, ExternalLink, Calendar, Image as ImageIcon, Globe } from 'lucide-react';
 import Link from 'next/link';
 
 export default function HistoryPage() {
   const router = useRouter();
   const { user } = useAuth();
+  const { openModal } = useModal();
   const { history, clearHistory, removeFromHistory } = useSearchHistory();
   const [searchTerm, setSearchTerm] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  // Redirect if not logged in
+  // Use dashboard layout - it handles authentication
   if (!user) {
-    return (
-      <div className="min-h-screen bg-blue-900">
-        <Header />
-        <div className="flex items-center justify-center min-h-[calc(100vh-80px)]">
-          <div className="text-center text-white">
-            <h1 className="text-3xl font-bold mb-4">Login Required</h1>
-            <p className="text-blue-100 mb-6">You need to be logged in to view your search history.</p>
-            <Link 
-              href="/"
-              className="inline-flex items-center px-6 py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
-            >
-              Go to Home
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
+    return <DashboardLayout><div /></DashboardLayout>;
   }
 
   // Filter history based on search term
@@ -62,57 +49,52 @@ export default function HistoryPage() {
   };
 
   return (
-    <div className="min-h-screen bg-blue-900">
-      <Header />
-      
-      <div className="container mx-auto max-w-6xl px-4 py-8 pt-24">
+    <DashboardLayout>
+      <div className="p-6">
+        <div className="max-w-6xl mx-auto">
         {/* Header Section */}
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-3 bg-orange-500 rounded-xl">
-              <History className="h-6 w-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold text-white">Search History</h1>
-              <p className="text-blue-100">View and manage your image extraction history</p>
-            </div>
+        <div className="mb-8 text-center">
+          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-gray-800/50 border border-gray-700/50">
+            <History className="h-8 w-8 text-blue-400" />
           </div>
+          <h1 className="mb-4 text-3xl font-bold text-white">Search History</h1>
+          <p className="text-gray-400">View and manage your image extraction history</p>
+        </div>
 
-          {/* Search and Actions */}
-          <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search history..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-white rounded-lg border border-gray-200 focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
-              />
-            </div>
-            
-            {history.length > 0 && (
-              <button
-                onClick={() => setShowDeleteConfirm(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
-              >
-                <Trash2 className="h-4 w-4" />
-                Clear All
-              </button>
-            )}
+        {/* Search and Actions */}
+        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="relative flex-1 max-w-md mx-auto sm:mx-0">
+            <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search history..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full rounded-full border border-gray-600/50 bg-gray-800/80 py-3 pl-12 pr-4 text-gray-200 placeholder-gray-400 outline-none transition-all duration-200 focus:border-blue-500/50 focus:bg-gray-800/90 focus:ring-2 focus:ring-blue-500/20"
+            />
           </div>
+          
+          {history.length > 0 && (
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className="flex items-center gap-2 rounded-full bg-red-600/80 border border-red-500/50 px-6 py-3 font-medium text-white transition-all duration-200 hover:bg-red-500/80"
+            >
+              <Trash2 className="h-4 w-4" />
+              Clear All
+            </button>
+          )}
         </div>
 
         {/* History List */}
         {filteredHistory.length === 0 ? (
           <div className="text-center py-16">
-            <div className="mx-auto w-24 h-24 bg-white/10 rounded-full flex items-center justify-center mb-6">
-              <History className="h-12 w-12 text-white/50" />
+            <div className="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-gray-800/50 border border-gray-700/50">
+              <History className="h-12 w-12 text-gray-400" />
             </div>
-            <h3 className="text-xl font-semibold text-white mb-2">
+            <h3 className="mb-2 text-xl font-semibold text-white">
               {history.length === 0 ? 'No search history yet' : 'No matching searches'}
             </h3>
-            <p className="text-blue-100 mb-6">
+            <p className="mb-6 text-gray-400">
               {history.length === 0 
                 ? 'Start extracting images to build your search history'
                 : 'Try adjusting your search terms'
@@ -120,9 +102,9 @@ export default function HistoryPage() {
             </p>
             <Link
               href="/"
-              className="inline-flex items-center px-6 py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
+              className="inline-flex items-center gap-2 rounded-full bg-blue-600/80 border border-blue-500/50 px-6 py-3 font-medium text-white transition-all duration-200 hover:bg-blue-500/80"
             >
-              <Search className="h-4 w-4 mr-2" />
+              <Globe className="h-4 w-4" />
               Start Extracting
             </Link>
           </div>
@@ -131,23 +113,23 @@ export default function HistoryPage() {
             {filteredHistory.map((item: SearchHistoryItem) => (
               <div
                 key={item.id}
-                className="bg-white rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow"
+                className="rounded-2xl bg-gray-900/80 border border-gray-700/50 p-6 backdrop-blur-sm transition-all duration-200 hover:bg-gray-900/90"
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-lg font-semibold text-gray-900 truncate">
+                      <h3 className="text-lg font-semibold text-gray-200 truncate">
                         {item.title}
                       </h3>
                       {item.imageCount && (
-                        <span className="flex items-center gap-1 px-2 py-1 bg-orange-100 text-orange-600 rounded-full text-sm">
+                        <span className="flex items-center gap-1 rounded-full bg-blue-900/50 border border-blue-700/50 px-3 py-1 text-sm text-blue-300">
                           <ImageIcon className="h-3 w-3" />
                           {item.imageCount} images
                         </span>
                       )}
                     </div>
                     
-                    <div className="flex items-center gap-2 text-sm text-gray-600 mb-3">
+                    <div className="flex items-center gap-2 mb-3 text-sm text-gray-400">
                       <ExternalLink className="h-3 w-3" />
                       <span className="truncate">{item.url}</span>
                     </div>
@@ -161,14 +143,14 @@ export default function HistoryPage() {
                   <div className="flex items-center gap-2 ml-4">
                     <button
                       onClick={() => handleSearchAgain(item.url)}
-                      className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
+                      className="flex items-center gap-2 rounded-full bg-blue-600/80 border border-blue-500/50 px-4 py-2 font-medium text-white transition-all duration-200 hover:bg-blue-500/80"
                     >
                       <Search className="h-3 w-3" />
                       Search Again
                     </button>
                     <button
                       onClick={() => removeFromHistory(item.id)}
-                      className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                      className="rounded-full p-2 text-gray-400 transition-all duration-200 hover:bg-red-600/20 hover:text-red-400"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -182,42 +164,62 @@ export default function HistoryPage() {
         {/* Stats */}
         {history.length > 0 && (
           <div className="mt-8 text-center">
-            <p className="text-blue-100 text-sm">
+            <p className="text-sm text-gray-400">
               Showing {filteredHistory.length} of {history.length} searches
             </p>
           </div>
         )}
-      </div>
 
-      {/* Delete Confirmation Modal */}
-      {showDeleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
-            <div className="mb-4">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Clear Search History
-              </h3>
-              <p className="text-gray-600">
-                Are you sure you want to clear all search history? This action cannot be undone.
-              </p>
-            </div>
-            <div className="flex gap-3 justify-end">
-              <button
-                onClick={() => setShowDeleteConfirm(false)}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleClearHistory}
-                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
-              >
-                Clear All
-              </button>
+        {/* Quick Actions */}
+        <div className="mt-8 flex flex-wrap gap-4 justify-center">
+          <Link
+            href="/"
+            className="flex items-center gap-2 rounded-full bg-gray-800/80 border border-gray-600/50 px-6 py-3 font-medium text-gray-200 transition-all duration-200 hover:bg-gray-700/80"
+          >
+            <Globe className="h-4 w-4" />
+            Extract Images
+          </Link>
+          
+          <Link
+            href="/credits"
+            className="flex items-center gap-2 rounded-full bg-gray-800/80 border border-gray-600/50 px-6 py-3 font-medium text-gray-200 transition-all duration-200 hover:bg-gray-700/80"
+          >
+            <History className="h-4 w-4" />
+            View Credits
+          </Link>
+        </div>
+        
+        {/* Delete Confirmation Modal */}
+        {showDeleteConfirm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+            <div className="w-full max-w-md rounded-2xl bg-gray-900 border border-gray-700/50 p-6 shadow-2xl">
+              <div className="mb-6">
+                <h3 className="mb-2 text-lg font-semibold text-gray-200">
+                  Clear Search History
+                </h3>
+                <p className="text-gray-400">
+                  Are you sure you want to clear all search history? This action cannot be undone.
+                </p>
+              </div>
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="rounded-full bg-gray-800/80 border border-gray-600/50 px-4 py-2 font-medium text-gray-200 transition-all duration-200 hover:bg-gray-700/80"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleClearHistory}
+                  className="rounded-full bg-red-600/80 border border-red-500/50 px-4 py-2 font-medium text-white transition-all duration-200 hover:bg-red-500/80"
+                >
+                  Clear All
+                </button>
+              </div>
             </div>
           </div>
+        )}
         </div>
-      )}
-    </div>
+      </div>
+    </DashboardLayout>
   );
 } 

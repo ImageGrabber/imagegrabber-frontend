@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useModal } from '@/contexts/ModalContext';
 import Header from '@/components/Header';
-import { Coins, Calendar, Globe, ArrowRight, Plus, History } from 'lucide-react';
+import DashboardLayout from '@/components/DashboardLayout';
+import { Coins, Calendar, Globe, ArrowRight, Plus, History, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 
 interface CreditTransaction {
@@ -23,16 +24,21 @@ export default function CreditsPage() {
   const [credits, setCredits] = useState<number | null>(null);
   const [transactions, setTransactions] = useState<CreditTransaction[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchCreditsAndHistory = async () => {
     if (!user) return;
     
     setLoading(true);
+    setError(null);
     try {
       const { supabase } = await import('@/lib/supabase');
       const { data: { session } } = await supabase.auth.getSession();
       
-      if (!session) return;
+      if (!session) {
+        setError('Session expired. Please sign in again.');
+        return;
+      }
       
       // Fetch current credits
       const creditsResponse = await fetch('/api/credits', {
@@ -45,25 +51,21 @@ export default function CreditsPage() {
       if (creditsResponse.ok) {
         const creditsData = await creditsResponse.json();
         setCredits(creditsData.credits);
+      } else {
+        throw new Error('Failed to fetch credits');
       }
 
-      // TODO: Fetch real transaction data from database
-      // For now, we'll show a sample transaction based on recent activity
-      const recentTransactions: CreditTransaction[] = [
-        {
-          id: '1',
-          type: 'deduction',
-          amount: -1,
-          description: 'Image extraction from students.senecapolytechnic.ca',
-          url: 'https://students.senecapolytechnic.ca/',
-          images_found: 8,
-          created_at: new Date().toISOString(),
-        }
-      ];
+      // Get real transaction data from localStorage for now
+      // In the future, this should come from the database
+      const storedTransactions = localStorage.getItem(`transactions_${user.id}`);
+      const recentTransactions: CreditTransaction[] = storedTransactions 
+        ? JSON.parse(storedTransactions) 
+        : [];
       
       setTransactions(recentTransactions);
     } catch (error) {
       console.error('Error fetching credits and history:', error);
+      setError(error instanceof Error ? error.message : 'Failed to load credits');
     } finally {
       setLoading(false);
     }
@@ -77,6 +79,18 @@ export default function CreditsPage() {
       setTransactions([]);
       setLoading(false);
     }
+  }, [user]);
+
+  // Listen for credits updates
+  useEffect(() => {
+    const handleCreditsUpdate = () => {
+      if (user) {
+        fetchCreditsAndHistory();
+      }
+    };
+
+    window.addEventListener('creditsUpdated', handleCreditsUpdate);
+    return () => window.removeEventListener('creditsUpdated', handleCreditsUpdate);
   }, [user]);
 
   const formatDate = (dateString: string) => {
@@ -104,34 +118,15 @@ export default function CreditsPage() {
     return <Globe className="h-4 w-4 text-blue-400" />;
   };
 
+  // Use dashboard layout - it handles authentication
   if (!user) {
-    return (
-      <div className="min-h-screen">
-        <Header />
-        <div className="container mx-auto max-w-4xl px-4 pt-32">
-          <div className="text-center">
-            <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-gray-800/50 border border-gray-700/50">
-              <Coins className="h-8 w-8 text-gray-400" />
-            </div>
-            <h1 className="mb-4 text-3xl font-bold text-white">Credits Dashboard</h1>
-            <p className="mb-8 text-gray-400">Please sign in to view your credit balance and usage history.</p>
-            <button
-              onClick={() => openModal('login')}
-              className="rounded-full bg-blue-600/80 border border-blue-500/50 px-6 py-3 font-medium text-white transition-all duration-200 hover:bg-blue-500/80"
-            >
-              Sign In
-            </button>
-          </div>
-        </div>
-      </div>
-    );
+    return <DashboardLayout><div /></DashboardLayout>;
   }
 
   return (
-    <div className="min-h-screen">
-      <Header />
-      
-      <div className="container mx-auto max-w-4xl px-4 pt-32 pb-16">
+    <DashboardLayout>
+      <div className="p-6">
+        <div className="max-w-4xl mx-auto">
         {/* Header Section */}
         <div className="mb-8 text-center">
           <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-gray-800/50 border border-gray-700/50">
@@ -141,29 +136,48 @@ export default function CreditsPage() {
           <p className="text-gray-400">Track your credit balance and usage history</p>
         </div>
 
+        {/* Error Message */}
+        {error && (
+          <div className="mb-6 rounded-2xl bg-red-900/50 border border-red-700/50 p-4">
+            <p className="text-red-200 text-center">{error}</p>
+          </div>
+        )}
+
         {/* Current Balance Card */}
         <div className="mb-8 rounded-2xl bg-gray-900/80 border border-gray-700/50 p-6 backdrop-blur-sm">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-semibold text-gray-200 mb-2">Current Balance</h2>
+              <div className="flex items-center gap-3 mb-2">
+                <h2 className="text-lg font-semibold text-gray-200">Current Balance</h2>
+                <button
+                  onClick={fetchCreditsAndHistory}
+                  disabled={loading}
+                  className="rounded-full p-1 text-gray-400 hover:bg-gray-700/50 hover:text-gray-200 transition-all duration-200 disabled:opacity-50"
+                  title="Refresh credits"
+                >
+                  <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                </button>
+              </div>
               <div className="flex items-center gap-3">
                 <Coins className={`h-6 w-6 ${getCreditsColor()}`} />
                 <span className={`text-3xl font-bold ${getCreditsColor()}`}>
-                  {loading ? '...' : credits}
+                  {loading ? '...' : (error ? 'Error' : credits)}
                 </span>
                 <span className="text-gray-400">credits</span>
               </div>
             </div>
             
-            {credits !== null && credits <= 5 && (
-              <Link 
-                href="/pricing"
-                className="flex items-center gap-2 rounded-full bg-blue-600/80 border border-blue-500/50 px-4 py-2 font-medium text-white transition-all duration-200 hover:bg-blue-500/80"
-              >
-                <Plus className="h-4 w-4" />
-                Buy Credits
-              </Link>
-            )}
+            <div className="flex items-center gap-3">
+              {credits !== null && credits <= 5 && (
+                <Link 
+                  href="/pricing"
+                  className="flex items-center gap-2 rounded-full bg-blue-600/80 border border-blue-500/50 px-4 py-2 font-medium text-white transition-all duration-200 hover:bg-blue-500/80"
+                >
+                  <Plus className="h-4 w-4" />
+                  Buy Credits
+                </Link>
+              )}
+            </div>
           </div>
           
           {credits !== null && (
@@ -277,7 +291,8 @@ export default function CreditsPage() {
             Buy More Credits
           </Link>
         </div>
+        </div>
       </div>
-    </div>
+    </DashboardLayout>
   );
 } 
