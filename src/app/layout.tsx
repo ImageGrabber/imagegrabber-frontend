@@ -19,11 +19,13 @@ export default function RootLayout({
       <head>
         <link rel="icon" href="/favicon.png" type="image/png" />
       </head>
-      <body className="text-gray-200">
+      <body className="text-gray-200 min-h-screen">
         <AuthProvider>
           <SearchHistoryProvider>
             <ModalProvider>
-              {children}
+              <div className="min-h-screen">
+                {children}
+              </div>
               <AuthModal />
             </ModalProvider>
           </SearchHistoryProvider>

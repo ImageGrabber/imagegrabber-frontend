@@ -34,8 +34,17 @@
   }
 }
 
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
 body {
   color: rgb(var(--foreground-rgb));
   background-color: #0a0a1a; /* A dark blue-black fallback */
   background-image: radial-gradient(circle at top left, #1a2a45, #0a0a1a);
+  background-attachment: fixed;
+  background-size: cover;
+  background-repeat: no-repeat;
 } 
