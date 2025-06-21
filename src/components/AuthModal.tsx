@@ -1,20 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useModal } from '@/contexts/ModalContext';
 import { supabase } from '@/lib/supabase';
 import { X, Mail, Lock, ArrowLeft, User } from 'lucide-react';
 
-interface AuthModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  initialMode?: 'login' | 'register';
-  customMessage?: string;
-  onSuccess?: () => void;
-}
-
-export default function AuthModal({ isOpen, onClose, initialMode = 'login', customMessage, onSuccess }: AuthModalProps) {
-  const [mode, setMode] = useState<'login' | 'register' | 'forgot-password'>(initialMode);
+export default function AuthModal() {
+  const { isModalOpen, closeModal, modalMode, customMessage, setModalMode } = useModal();
+  const [mode, setMode] = useState<'login' | 'register' | 'forgot-password'>(modalMode);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -23,6 +17,17 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login', cust
   const [message, setMessage] = useState<string | null>(null);
 
   const { signIn, signUp } = useAuth();
+
+  useEffect(() => {
+    if (isModalOpen) {
+      setMode(modalMode);
+    }
+  }, [isModalOpen, modalMode]);
+
+  const handleClose = () => {
+    closeModal();
+    resetForm();
+  }
 
   const resetForm = () => {
     setName('');
@@ -44,9 +49,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login', cust
         if (error) {
           setError(error.message);
         } else {
-          onClose();
-          resetForm();
-          onSuccess?.();
+          handleClose();
         }
       } else if (mode === 'register') {
         const { error } = await supabase.auth.signUp({
@@ -63,7 +66,6 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login', cust
           setError(error.message);
         } else {
           setMessage('Check your email for the confirmation link!');
-          onSuccess?.();
         }
       } else if (mode === 'forgot-password') {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
@@ -87,7 +89,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login', cust
     resetForm();
   };
 
-  if (!isOpen) return null;
+  if (!isModalOpen) return null;
 
   const getTitle = () => {
     switch (mode) {
@@ -130,25 +132,25 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login', cust
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-2xl">
+      <div className="w-full max-w-md rounded-2xl bg-gray-900 border border-gray-700/50 p-8 shadow-2xl">
         {/* Header */}
         <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
             {mode === 'forgot-password' && (
               <button
                 onClick={() => switchMode('login')}
-                className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                className="rounded-lg p-2 text-gray-400 hover:bg-gray-800 hover:text-gray-200"
               >
                 <ArrowLeft className="h-4 w-4" />
               </button>
             )}
-            <h2 className="text-2xl font-bold text-gray-900">
+            <h2 className="text-2xl font-bold text-gray-100">
               {getTitle()}
             </h2>
           </div>
           <button
-            onClick={onClose}
-            className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+            onClick={handleClose}
+            className="rounded-lg p-2 text-gray-400 hover:bg-gray-800 hover:text-gray-200"
           >
             <X className="h-5 w-5" />
           </button>
@@ -156,8 +158,8 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login', cust
 
         {/* Custom Message */}
         {customMessage && (
-          <div className="mb-6 rounded-lg bg-blue-50 p-4">
-            <p className="text-sm text-blue-700">{customMessage}</p>
+          <div className="mb-6 rounded-lg bg-blue-900/50 border border-blue-700/50 p-4">
+            <p className="text-sm text-blue-200">{customMessage}</p>
           </div>
         )}
 
@@ -166,7 +168,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login', cust
           {/* Name Field - Only show for registration */}
           {mode === 'register' && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-200 mb-2">
                 Full Name
               </label>
               <div className="relative">
@@ -178,7 +180,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login', cust
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   required
-                  className="w-full rounded-lg border border-gray-300 pl-10 pr-4 py-3 text-gray-900 placeholder-gray-500 focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
+                  className="w-full rounded-lg border border-gray-600/50 bg-gray-800/80 pl-10 pr-4 py-3 text-gray-200 placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   placeholder="Enter your full name"
                 />
               </div>
@@ -187,7 +189,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login', cust
 
           {/* Email Field */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-200 mb-2">
               Email Address
             </label>
             <div className="relative">
@@ -199,7 +201,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login', cust
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full rounded-lg border border-gray-300 pl-10 pr-4 py-3 text-gray-900 placeholder-gray-500 focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
+                className="w-full rounded-lg border border-gray-600/50 bg-gray-800/80 pl-10 pr-4 py-3 text-gray-200 placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 placeholder="Enter your email"
               />
             </div>
@@ -208,7 +210,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login', cust
           {/* Password Field - Only show for login and register */}
           {mode !== 'forgot-password' && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-200 mb-2">
                 Password
               </label>
               <div className="relative">
@@ -221,7 +223,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login', cust
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   minLength={6}
-                  className="w-full rounded-lg border border-gray-300 pl-10 pr-4 py-3 text-gray-900 placeholder-gray-500 focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
+                  className="w-full rounded-lg border border-gray-600/50 bg-gray-800/80 pl-10 pr-4 py-3 text-gray-200 placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   placeholder="Enter your password"
                 />
               </div>
@@ -234,7 +236,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login', cust
               <button
                 type="button"
                 onClick={() => switchMode('forgot-password')}
-                className="text-sm text-orange-600 hover:text-orange-500 transition-colors"
+                className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
               >
                 Forgot your password?
               </button>
@@ -243,15 +245,15 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login', cust
 
           {/* Error Message */}
           {error && (
-            <div className="rounded-lg bg-red-50 p-3">
-              <p className="text-sm text-red-600">{error}</p>
+            <div className="rounded-lg bg-red-900/50 border border-red-700/50 p-3">
+              <p className="text-sm text-red-200">{error}</p>
             </div>
           )}
 
           {/* Success Message */}
           {message && (
-            <div className="rounded-lg bg-green-50 p-3">
-              <p className="text-sm text-green-600">{message}</p>
+            <div className="rounded-lg bg-green-900/50 border border-green-700/50 p-3">
+              <p className="text-sm text-green-200">{message}</p>
             </div>
           )}
 
@@ -259,7 +261,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login', cust
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-lg bg-orange-500 py-3 text-white font-semibold hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="w-full rounded-full bg-blue-600 py-3 text-white font-semibold shadow-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
           >
             {loading ? (
               <div className="flex items-center justify-center gap-2">
@@ -275,11 +277,11 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login', cust
         {/* Mode Switch - Only show for login and register modes */}
         {mode !== 'forgot-password' && (
           <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-gray-400">
               {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
               <button
                 onClick={() => switchMode(mode === 'login' ? 'register' : 'login')}
-                className="font-medium text-orange-600 hover:text-orange-500 transition-colors"
+                className="font-medium text-blue-400 hover:text-blue-300 transition-colors"
               >
                 {mode === 'login' ? 'Sign up' : 'Sign in'}
               </button>
@@ -290,11 +292,11 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login', cust
         {/* Back to Login - Only show in forgot password mode */}
         {mode === 'forgot-password' && (
           <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-gray-400">
               Remember your password?{' '}
               <button
                 onClick={() => switchMode('login')}
-                className="font-medium text-orange-600 hover:text-orange-500 transition-colors"
+                className="font-medium text-blue-400 hover:text-blue-300 transition-colors"
               >
                 Back to Sign In
               </button>

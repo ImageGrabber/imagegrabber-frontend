@@ -1,14 +1,15 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, ReactNode } from 'react';
 import Header from '@/components/Header';
 import HeroSection from '@/components/HeroSection';
 import ImageGrid from '@/components/ImageGrid';
 import ImageFilterBar, { FilterOptions } from '@/components/ImageFilterBar';
-import AuthModal from '@/components/AuthModal';
 import { useAuth } from '@/contexts/AuthContext';
+import { useModal } from '@/contexts/ModalContext';
 import { useSearchHistory } from '@/contexts/SearchHistoryContext';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 export interface Image {
   url: string;
@@ -23,7 +24,7 @@ export interface Image {
 export default function Home() {
   const [images, setImages] = useState<Image[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ReactNode | null>(null);
   const [lastSearchUrl, setLastSearchUrl] = useState<string>('');
   const [filters, setFilters] = useState<FilterOptions>({
     types: [],
@@ -31,10 +32,9 @@ export default function Home() {
     sortBy: 'filename',
     sortOrder: 'asc'
   });
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  const [authMessage, setAuthMessage] = useState<string>('');
 
-  const { user } = useAuth();
+  const { user, refreshSession } = useAuth();
+  const { openModal } = useModal();
   const { addToHistory } = useSearchHistory();
   const router = useRouter();
 
@@ -91,15 +91,61 @@ export default function Home() {
 
   /* ---------------- SCRAPING ---------------- */
   const handleScrape = async (url: string) => {
+    // Client-side check to prevent unnecessary API calls
+    if (!user) {
+      openModal('login', 'Please log in to scrape images.');
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
     setLastSearchUrl(url);
 
     try {
-      const res = await fetch(`/api/scrape?url=${encodeURIComponent(url)}`);
-      if (!res.ok) throw new Error('Failed to scrape images');
+      // Use Supabase client to make authenticated request
+      const { supabase } = await import('@/lib/supabase');
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        openModal('login', 'Your session has expired. Please sign in again.');
+        return;
+      }
+      
+      const res = await fetch(`/api/scrape`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        credentials: 'include',
+        body: JSON.stringify({ url }),
+      });
+
+      if (!res.ok) {
+        if (res.status === 401) {
+          // This means the server session is stale/expired despite client thinking it's valid
+          openModal('login', 'Your session has expired. Please sign in again.');
+          return;
+        }
+        if (res.status === 402) {
+          const data = await res.json();
+          setError(
+            <span>
+              {data.error || 'You are out of credits.'}{' '}
+              <Link href="/pricing" className="underline font-semibold hover:text-orange-500">
+                Please upgrade to continue.
+              </Link>
+            </span>
+          );
+          return;
+        }
+        throw new Error('Failed to scrape images');
+      }
+
       const data = await res.json();
       setImages(data.images);
+      
+      // Note: Credits are handled by the API, no need to update local state
 
       // Update history with image count if user is logged in
       if (user) {
@@ -161,15 +207,7 @@ export default function Home() {
 
   /* --------------- AUTH REQUIRED -------------- */
   const handleAuthRequired = () => {
-    setAuthMessage('Please log in or register to push images to WordPress and Shopify. After logging in, configure your integration settings to start pushing images.');
-    setShowAuthModal(true);
-  };
-
-  const handleAuthSuccess = () => {
-    setShowAuthModal(false);
-    setAuthMessage('');
-    // Redirect to settings page after successful authentication
-    router.push('/settings');
+    openModal('login', 'Please log in or register to push images to your integrations.');
   };
 
   /* ------------------ RENDER ----------------- */
@@ -177,13 +215,13 @@ export default function Home() {
     <>
       <Header />
 
-      <div className="bg-blue-900 min-h-screen">
+      <div>
         {/* Hero Section with Background */}
         <HeroSection isLoading={isLoading} onScrape={handleScrape} />
 
         {/* Results area with filters */}
         {images.length > 0 && (
-          <main className="container mx-auto max-w-6xl px-4 pb-16 mt-30">
+          <main className="container mx-auto mt-30 max-w-6xl px-4 pb-16">
             {/* Filter Bar */}
             <ImageFilterBar
               onFilterChange={setFilters}
@@ -195,7 +233,7 @@ export default function Home() {
               <button
                 onClick={handleDownloadAll}
                 disabled={filteredAndSortedImages.length === 0}
-                className="rounded-lg bg-orange-500 px-4 py-2 font-medium text-white transition hover:bg-orange-600 disabled:opacity-50"
+                className="rounded-full bg-blue-600 px-6 py-2.5 text-sm font-medium text-white shadow-lg transition-all duration-200 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Download {filteredAndSortedImages.length > 0 ? `Filtered (${filteredAndSortedImages.length})` : 'All'} Images
               </button>
@@ -217,18 +255,6 @@ export default function Home() {
           </div>
         )}
       </div>
-
-      {/* Auth Modal for Push Operations */}
-      <AuthModal
-        isOpen={showAuthModal}
-        onClose={() => {
-          setShowAuthModal(false);
-          setAuthMessage('');
-        }}
-        initialMode="register"
-        customMessage={authMessage}
-        onSuccess={handleAuthSuccess}
-      />
     </>
   );
 }

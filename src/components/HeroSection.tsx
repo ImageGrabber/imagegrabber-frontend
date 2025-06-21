@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Paperclip, History, Eye } from 'lucide-react';
+import { ArrowRight, Briefcase, History, Eye } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSearchHistory } from '@/contexts/SearchHistoryContext';
 import Link from 'next/link';
@@ -15,22 +15,16 @@ export default function HeroSection({ isLoading, onScrape }: Props) {
   const [url, setUrl] = useState('');
   const [showHistoryDropdown, setShowHistoryDropdown] = useState(false);
   const { user } = useAuth();
-  const { history, addToHistory } = useSearchHistory();
+  const { history } = useSearchHistory();
 
-  const handleExtract = () => {
+  const handleSearch = () => {
     if (!url.trim()) return;
-    
-    // Add to history when user is logged in
-    if (user) {
-      addToHistory(url.trim());
-    }
-    
     onScrape(url.trim());
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
-      handleExtract();
+      handleSearch();
     }
   };
 
@@ -43,39 +37,48 @@ export default function HeroSection({ isLoading, onScrape }: Props) {
   const recentHistory = history.slice(0, 5);
 
   return (
-    <section className="relative min-h-[600px] pt-20 pb-16">
-      <div className="relative mx-auto max-w-7xl px-4 text-center">
-        <div className="mb-12 pt-16">
-          <h1 className="text-5xl md:text-6xl font-bold text-white mb-4">
-            Extract images
-          </h1>
-          <p className="text-xl text-blue-100 max-w-2xl mx-auto">
-            from specific URL and push to your desired sites
-          </p>
+    <>
+      <section className="relative min-h-[800px] pt-40 pb-20 flex items-center">
+        {/* Decorative background elements */}
+        <div className="absolute top-0 left-0 w-full h-full overflow-hidden">
+          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-900/30 rounded-full filter blur-3xl opacity-50 animate-pulse"></div>
+          <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-900/30 rounded-full filter blur-3xl opacity-50 animate-pulse delay-2000"></div>
+          <div className="absolute -top-20 -left-40 w-[400px] h-[400px] border-4 border-white/5 rounded-full" />
+          <div className="absolute -bottom-20 -right-40 w-[400px] h-[400px] border-2 border-white/5 rounded-full" />
         </div>
 
-        <div className="mx-auto max-w-4xl">
-          <div className="rounded-3xl bg-white p-8 shadow-2xl">
-            <div className="space-y-4">
-              <div className="flex items-center gap-4 rounded-2xl border-2 border-gray-200 bg-gray-50 p-2 focus-within:border-orange-500 focus-within:bg-white">
-                <div className="flex items-center pl-4">
-                  <Paperclip className="h-5 w-5 text-gray-400" />
-                </div>
+        <div className="relative mx-auto max-w-5xl px-4 text-center z-10">
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-1.5 mb-6">
+            <div className="h-2 w-2 rounded-full bg-white"></div>
+            <span className="text-sm font-medium text-white">FlowManager</span>
+          </div>
+
+          <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 leading-tight">
+            Professional Image <br /> Management Solutions
+          </h1>
+          <p className="text-lg text-gray-300 max-w-2xl mx-auto mb-10">
+            Streamline your content workflow with intelligent image extraction, 
+            automated resizing, and seamless integration with WordPress, Shopify, and other platforms.
+          </p>
+
+          {/* Search bar */}
+          <div className="mx-auto max-w-2xl">
+             <div className="relative">
                 <input
                   type="url"
-                  placeholder="Where are you want to extract?"
+                  placeholder="Have a site in mind? Paste a URL to get started..."
                   value={url}
                   onChange={e => setUrl(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  className="flex-1 bg-transparent py-4 text-lg text-gray-900 placeholder-gray-500 outline-none"
+                  className="w-full rounded-lg border border-white/20 bg-white/5 py-4 pl-5 pr-40 text-lg text-white placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-500"
                 />
-                <div className="flex items-center gap-2 pr-2">
+                <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-2">
                   {/* History Button - Only show when logged in */}
                   {user && (
                     <div className="relative">
                       <button 
                         onClick={() => setShowHistoryDropdown(!showHistoryDropdown)}
-                        className="rounded-xl p-3 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+                        className="rounded-full p-2 text-gray-400 hover:bg-white/10 hover:text-gray-200 transition-all duration-200"
                         title="Search History"
                       >
                         <History className="h-5 w-5" />
@@ -83,13 +86,13 @@ export default function HeroSection({ isLoading, onScrape }: Props) {
 
                       {/* History Dropdown */}
                       {showHistoryDropdown && (
-                        <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
+                        <div className="absolute right-0 mt-2 w-80 bg-gray-900 border border-gray-700/50 rounded-xl shadow-xl z-10">
                           <div className="p-4">
                             <div className="flex items-center justify-between mb-3">
-                              <h3 className="font-medium text-gray-900">Recent Searches</h3>
+                              <h3 className="font-medium text-gray-200">Recent Searches</h3>
                               <Link 
                                 href="/history"
-                                className="flex items-center gap-1 text-sm text-orange-600 hover:text-orange-700 transition-colors"
+                                className="flex items-center gap-1 text-sm text-blue-400 hover:text-blue-300 transition-colors"
                                 onClick={() => setShowHistoryDropdown(false)}
                               >
                                 <Eye className="h-3 w-3" />
@@ -103,15 +106,15 @@ export default function HeroSection({ isLoading, onScrape }: Props) {
                                   <button
                                     key={item.id}
                                     onClick={() => selectFromHistory(item.url)}
-                                    className="w-full text-left p-2 rounded-lg hover:bg-gray-50 transition-colors"
+                                    className="w-full text-left p-3 rounded-lg hover:bg-gray-800/50 transition-colors"
                                   >
-                                    <div className="text-sm font-medium text-gray-900 truncate">
+                                    <div className="text-sm font-medium text-gray-200 truncate">
                                       {item.title}
                                     </div>
-                                    <div className="text-xs text-gray-500 truncate">
+                                    <div className="text-xs text-gray-400 truncate">
                                       {item.url}
                                     </div>
-                                    <div className="text-xs text-gray-400">
+                                    <div className="text-xs text-gray-500">
                                       {item.imageCount && `${item.imageCount} images • `}
                                       {item.timestamp.toLocaleDateString()}
                                     </div>
@@ -119,7 +122,7 @@ export default function HeroSection({ isLoading, onScrape }: Props) {
                                 ))}
                               </div>
                             ) : (
-                              <p className="text-sm text-gray-500 text-center py-4">
+                              <p className="text-sm text-gray-400 text-center py-4">
                                 No search history yet
                               </p>
                             )}
@@ -131,42 +134,16 @@ export default function HeroSection({ isLoading, onScrape }: Props) {
 
                   <button
                     disabled={isLoading || !url.trim()}
-                    onClick={handleExtract}
-                    className="rounded-xl bg-orange-500 px-8 py-3 text-white font-semibold shadow-lg transition-all hover:bg-orange-600 hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={handleSearch}
+                    className="rounded-md bg-gray-600/50 px-5 py-2 text-white font-semibold transition-colors hover:bg-gray-500/50 disabled:opacity-50"
                   >
-                    {isLoading ? (
-                      <div className="flex items-center gap-2">
-                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
-                        Extracting...
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
-                        Extract
-                      </div>
-                    )}
+                    {isLoading ? 'Loading...' : 'Grab'}
                   </button>
                 </div>
-              </div>
-
-              <div className="flex flex-wrap justify-center gap-2 text-sm">
-                <span className="text-gray-500">Popular:</span>
-                {['instagram', 'pinterest', 'unsplash', 'dribbble', 'behance'].map(tag => (
-                  <button
-                    key={tag}
-                    onClick={() => setUrl(`https://${tag}.com`)}
-                    className="rounded-full bg-gray-100 px-3 py-1 text-gray-600 hover:bg-gray-200 transition-colors"
-                  >
-                    {tag}
-                  </button>
-                ))}
-              </div>
-            </div>
+             </div>
           </div>
         </div>
-      </div>
+      </section>
 
       {/* Click outside to close dropdown */}
       {showHistoryDropdown && (
@@ -175,6 +152,6 @@ export default function HeroSection({ isLoading, onScrape }: Props) {
           onClick={() => setShowHistoryDropdown(false)}
         />
       )}
-    </section>
+    </>
   );
 } 

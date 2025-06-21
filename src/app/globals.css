@@ -36,10 +36,6 @@
 
 body {
   color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
+  background-color: #0a0a1a; /* A dark blue-black fallback */
+  background-image: radial-gradient(circle at top left, #1a2a45, #0a0a1a);
 } 

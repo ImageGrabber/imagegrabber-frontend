@@ -199,7 +199,7 @@ export default function ImageCard({ image, onDownload, onSelect, isSelected = fa
           <div className="flex gap-2 translate-y-4 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
             <button
               onClick={e => { e.stopPropagation(); onDownload(image.url, image.filename); }}
-              className="rounded-full bg-white p-3 text-gray-800 shadow-lg transition-colors hover:bg-blue-500 hover:text-white disabled:opacity-50"
+              className="rounded-full bg-gray-800/90 p-3 text-gray-200 shadow-lg transition-all duration-200 hover:bg-blue-600 hover:text-white disabled:opacity-50 border border-gray-600/50"
               title="Download"
             >
               <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -209,11 +209,11 @@ export default function ImageCard({ image, onDownload, onSelect, isSelected = fa
             <button
               onClick={e => { e.stopPropagation(); handlePushToWordPress(); }}
               disabled={isWordPressPushing || isShopifyPushing}
-              className="rounded-full bg-white p-3 text-gray-800 shadow-lg transition-colors hover:bg-blue-500 hover:text-white disabled:opacity-50"
+              className="rounded-full bg-gray-800/90 p-3 text-gray-200 shadow-lg transition-all duration-200 hover:bg-blue-600 hover:text-white disabled:opacity-50 border border-gray-600/50"
               title={user ? "Push to WordPress" : "Login required to push to WordPress"}
             >
               {isWordPressPushing ? (
-                <div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-800 border-t-transparent"></div>
+                <div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-200 border-t-transparent"></div>
               ) : (
                 <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
@@ -223,11 +223,11 @@ export default function ImageCard({ image, onDownload, onSelect, isSelected = fa
             <button
               onClick={e => { e.stopPropagation(); handlePushToShopify(); }}
               disabled={isWordPressPushing || isShopifyPushing}
-              className="rounded-full bg-white p-3 text-gray-800 shadow-lg transition-colors hover:bg-green-500 hover:text-white disabled:opacity-50"
+              className="rounded-full bg-gray-800/90 p-3 text-gray-200 shadow-lg transition-all duration-200 hover:bg-green-600 hover:text-white disabled:opacity-50 border border-gray-600/50"
               title={user ? "Push to Shopify" : "Login required to push to Shopify"}
             >
               {isShopifyPushing ? (
-                <div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-800 border-t-transparent"></div>
+                <div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-200 border-t-transparent"></div>
               ) : (
                 <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />

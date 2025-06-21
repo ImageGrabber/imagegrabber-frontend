@@ -1,6 +1,8 @@
 import './globals.css'; // ✅ add this line at the top
 import { AuthProvider } from '@/contexts/AuthContext';
 import { SearchHistoryProvider } from '@/contexts/SearchHistoryContext';
+import { ModalProvider } from '@/contexts/ModalContext';
+import AuthModal from '@/components/AuthModal';
 
 export const metadata = {
   title: 'Image Extractor',
@@ -17,10 +19,13 @@ export default function RootLayout({
       <head>
         <link rel="icon" href="/favicon.png" type="image/png" />
       </head>
-      <body>
+      <body className="text-gray-200">
         <AuthProvider>
           <SearchHistoryProvider>
-            {children}
+            <ModalProvider>
+              {children}
+              <AuthModal />
+            </ModalProvider>
           </SearchHistoryProvider>
         </AuthProvider>
       </body>

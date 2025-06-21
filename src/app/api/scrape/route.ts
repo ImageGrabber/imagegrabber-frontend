@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { parse, HTMLElement } from 'node-html-parser';
+import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
 
 // Helper function to get image metadata
 async function getImageMetadata(url: string): Promise<{
@@ -166,223 +168,189 @@ function getImageContentHash(url: string): string {
   }
 }
 
-export async function GET(request: NextRequest) {
-  const url = request.nextUrl.searchParams.get('url');
-  if (!url) {
-    return NextResponse.json({ error: 'URL parameter is required' }, { status: 400 });
-  }
+export async function POST(request: NextRequest) {
+  const cookieStore = cookies();
+  const supabase = createServerComponentClient({ cookies: () => cookieStore });
 
   try {
-    const response = await fetch(url);
-    if (!response.ok) {
-      return NextResponse.json({ error: `HTTP error! status: ${response.status}` }, { status: response.status });
+    // Try to get session from cookies first
+    let { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    
+    // If no session from cookies, try Authorization header
+    if (!session && request.headers.get('authorization')) {
+      const token = request.headers.get('authorization')?.replace('Bearer ', '');
+      if (token) {
+        const { data, error } = await supabase.auth.getUser(token);
+        if (data.user && !error) {
+          session = { user: data.user, access_token: token } as any;
+        }
+      }
     }
     
-    const html = await response.text();
-    const root = parse(html);
-    const baseUrl = new URL(url);
-    const images: { url: string; filename: string; size?: number; width?: number; height?: number; type?: string; quality?: 'low' | 'medium' | 'high' }[] = [];
-    const processedUrls = new Set<string>();
-    const imageHashes = new Map<string, { url: string; filename: string; size?: number; width?: number; height?: number; type?: string; quality?: 'low' | 'medium' | 'high' }>();
-    
-    // Helper function to process image URL with metadata
-    const processImageUrl = async (src: string) => {
-      if (!src) return;
-      
-      // Skip data URLs, empty strings, and very short URLs
-      if (src.startsWith('data:') || src.length < 4) return;
-      
-      try {
-        const absoluteUrl = new URL(src, baseUrl.href).toString();
-        const normalizedUrl = normalizeUrl(absoluteUrl);
-        const contentHash = getImageContentHash(absoluteUrl);
-        
-        // Check if we already have this exact URL
-        if (images.some(img => img.url === absoluteUrl)) {
-          return;
-        }
-        
-        // Basic filtering - only skip obviously non-image URLs
-        // Skip if it's clearly not an image (has obvious non-image extensions)
-        const nonImageExtensions = ['.js', '.css', '.html', '.pdf', '.doc', '.txt', '.xml', '.json'];
-        const hasNonImageExtension = nonImageExtensions.some(ext => absoluteUrl.toLowerCase().includes(ext));
-        if (hasNonImageExtension) return;
-        
-        const filename = absoluteUrl.split('/').pop()?.split('?')[0] || 'image.jpg';
-        
-        // Create basic image data first
-        const imageData = { 
-          url: absoluteUrl, 
-          filename,
-          type: 'image/unknown',
-          quality: 'medium' as const
-        };
-        
-        // Store in our images array
-        images.push(imageData);
-        
-        // Try to get metadata asynchronously (don't wait for it)
-        getImageMetadata(absoluteUrl).then(metadata => {
-          Object.assign(imageData, metadata);
-        }).catch(() => {
-          // Ignore metadata failures
-        });
-      } catch (error) {
-        console.error('Failed to process image URL:', src, error instanceof Error ? error.message : 'Unknown error');
-      }
-    };
+    if (sessionError && !session) {
+      console.error('Session error:', sessionError);
+      return NextResponse.json({ error: 'Authentication failed.' }, { status: 401 });
+    }
 
-    // COMPREHENSIVE IMAGE SCRAPING - No longer using specific product gallery targeting
-    console.log('Starting comprehensive image scraping...');
-    
-    const imagePromises: Promise<void>[] = [];
-    
-    // 1. Regular img tags with all possible src attributes
-    root.querySelectorAll('img').forEach((img: HTMLElement) => {
-      // Main src attribute
-      const src = img.getAttribute('src');
-      if (src) imagePromises.push(processImageUrl(src));
-      
-      // Common lazy loading attributes
-      const lazyAttrs = ['data-src', 'data-lazy-src', 'data-original', 'data-lazy', 'data-srcset', 'data-img-src', 'data-image-src'];
-      lazyAttrs.forEach(attr => {
-        const value = img.getAttribute(attr);
-        if (value) imagePromises.push(processImageUrl(value));
-      });
-      
-      // Handle srcset for responsive images
-      const srcset = img.getAttribute('srcset');
-      if (srcset) {
-        srcset.split(',').forEach(src => {
-          const url = src.trim().split(' ')[0];
-          if (url) imagePromises.push(processImageUrl(url));
-        });
-      }
-      
-      // Handle data-srcset for lazy loading
-      const dataSrcset = img.getAttribute('data-srcset');
-      if (dataSrcset) {
-        dataSrcset.split(',').forEach(src => {
-          const url = src.trim().split(' ')[0];
-          if (url) imagePromises.push(processImageUrl(url));
-        });
-      }
-    });
+    if (!session) {
+      console.log('No session found');
+      return NextResponse.json({ error: 'You must be logged in to scrape images.' }, { status: 401 });
+    }
 
-    // 2. Picture elements and their sources
-    root.querySelectorAll('picture source').forEach((source: HTMLElement) => {
-      const srcset = source.getAttribute('srcset');
-      if (srcset) {
-        srcset.split(',').forEach(src => {
-          const url = src.trim().split(' ')[0];
-          if (url) imagePromises.push(processImageUrl(url));
-        });
+    const user = session.user;
+    
+    if (!user) {
+      console.log('No user in session');
+      return NextResponse.json({ error: 'You must be logged in to scrape images.' }, { status: 401 });
+    }
+
+    console.log('User authenticated:', user.id);
+
+    // Check user's credit balance and daily extractions
+    let { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('credits')
+      .eq('id', user.id)
+      .single();
+
+    // If profile doesn't exist, try to create one, but if that fails due to RLS, use defaults
+    if (profileError && profileError.code === 'PGRST116') {
+      console.log('Profile not found, attempting to create one');
+      const { data: newProfile, error: createError } = await supabase
+        .from('profiles')
+        .insert({
+          id: user.id,
+          credits: 10 // Give new users 10 free credits
+        })
+        .select('credits')
+        .single();
+
+      if (createError) {
+        console.error('Failed to create profile (likely due to RLS):', createError);
+        // Use default credits for users without profiles
+        profile = { credits: 10 };
+        console.log('Using default credits for user without profile');
+      } else {
+        profile = newProfile;
+        console.log('Profile created successfully');
+      }
+    } else if (profileError || !profile) {
+      console.error('Profile error:', profileError);
+      return NextResponse.json({ error: 'Could not retrieve your profile.' }, { status: 500 });
+    }
+
+    console.log('User has', profile.credits, 'credits');
+
+    // Simplified credit check - just use the credits column
+    if (profile.credits <= 0) {
+      return NextResponse.json({ error: 'You are out of credits.' }, { status: 402 });
+    }
+
+    const { url } = await request.json();
+
+    if (!url) {
+      return NextResponse.json({ error: 'URL parameter is required' }, { status: 400 });
+    }
+
+    console.log('Starting scrape for URL:', url);
+
+    try {
+      const response = await fetch(url);
+      console.log('Fetch response status:', response.status);
+      
+      if (!response.ok) {
+        console.error(`HTTP error! status: ${response.status} for URL: ${url}`);
+        return NextResponse.json({ error: `HTTP error! status: ${response.status}` }, { status: response.status });
       }
       
-      // Check for lazy loading on sources too
-      const dataSrcset = source.getAttribute('data-srcset');
-      if (dataSrcset) {
-        dataSrcset.split(',').forEach(src => {
-          const url = src.trim().split(' ')[0];
-          if (url) imagePromises.push(processImageUrl(url));
-        });
-      }
-    });
-
-    // 3. CSS background images in style attributes
-    root.querySelectorAll('[style*="background-image"], [style*="background:"]').forEach((el: HTMLElement) => {
-      const style = el.getAttribute('style');
-      if (style) {
-        // Match multiple URL patterns in background properties
-        const urlMatches = style.match(/url\(['"]?([^'"()]+)['"]?\)/g);
-        if (urlMatches) {
-          urlMatches.forEach(match => {
-            const url = match.match(/url\(['"]?([^'"()]+)['"]?\)/)?.[1];
-            if (url) imagePromises.push(processImageUrl(url));
-          });
-        }
-      }
-    });
-
-    // 4. Common container classes that might have images
-    const commonImageContainers = [
-      '.image', '.img', '.photo', '.picture', '.gallery', '.carousel', 
-      '.slider', '.banner', '.hero', '.thumbnail', '.avatar', '.logo',
-      '.product-image', '.gallery-item', '[data-bg]', '[data-background]'
-    ];
-    
-    commonImageContainers.forEach(selector => {
-      try {
-        root.querySelectorAll(selector).forEach((el: HTMLElement) => {
-          // Check for data attributes that might contain image URLs
-          const dataAttrs = ['data-bg', 'data-background', 'data-image', 'data-img'];
-          dataAttrs.forEach(attr => {
-            const value = el.getAttribute(attr);
-            if (value) imagePromises.push(processImageUrl(value));
-          });
+      const html = await response.text();
+      const root = parse(html);
+      const baseUrl = new URL(url);
+      const imageHashes = new Map<string, { url: string; filename: string; size?: number; width?: number; height?: number; type?: string; quality?: 'low' | 'medium' | 'high' }>();
+      
+      const processImageUrl = (src: string) => {
+        if (!src || src.startsWith('data:') || src.length < 4) return;
+        
+        try {
+          const absoluteUrl = new URL(src, baseUrl.href).toString();
+          const contentHash = getImageContentHash(absoluteUrl);
           
-          // Check nested images
-          el.querySelectorAll('img').forEach((img: HTMLElement) => {
-            const src = img.getAttribute('src');
-            if (src) imagePromises.push(processImageUrl(src));
-          });
-        });
-      } catch (e) {
-        // Continue if selector fails
-      }
-    });
-
-    // 5. Links to image files
-    root.querySelectorAll('a[href]').forEach((link: HTMLElement) => {
-      const href = link.getAttribute('href');
-      if (href && isImageUrl(href)) {
-        imagePromises.push(processImageUrl(href));
-      }
-    });
-
-    // 6. Input elements with image sources (like file inputs with previews)
-    root.querySelectorAll('input[type="image"], input[src]').forEach((input: HTMLElement) => {
-      const src = input.getAttribute('src');
-      if (src) imagePromises.push(processImageUrl(src));
-    });
-    
-    // Wait for all image processing to complete
-    await Promise.all(imagePromises);
-    
-    console.log(`Found ${images.length} images after comprehensive scraping`);
-    
-    // If we didn't find many images, try a super aggressive approach
-    if (images.length < 5) {
-      console.log('Low image count, trying aggressive scraping...');
-      const aggressivePromises: Promise<void>[] = [];
-      
-      // Get ALL elements with any src-like attribute
-      root.querySelectorAll('*').forEach((el: HTMLElement) => {
-        const attrs = ['src', 'data-src', 'data-lazy-src', 'data-original', 'data-img', 'data-image'];
-        attrs.forEach(attr => {
-          const value = el.getAttribute(attr);
-          if (value && value.length > 10 && !value.startsWith('data:')) {
-            aggressivePromises.push(processImageUrl(value));
+          // If we have a better quality image already, skip this one
+          if (imageHashes.has(contentHash)) {
+            const existing = imageHashes.get(contentHash)!;
+            if (existing.width && existing.width > 250) return; // Simple heuristic for "good enough"
           }
-        });
-      });
+          
+          const filename = absoluteUrl.split('/').pop()?.split('?')[0] || 'image.jpg';
+          imageHashes.set(contentHash, { url: absoluteUrl, filename });
+
+        } catch (error) {
+          console.error('Failed to process image URL:', src, error instanceof Error ? error.message : 'Unknown error');
+        }
+      };
       
-      await Promise.all(aggressivePromises);
-      console.log(`After aggressive scraping: ${images.length} images`);
+      // --- Start Scraping ---
+      
+      // 1. Regular img tags
+      root.querySelectorAll('img').forEach(img => {
+        processImageUrl(img.getAttribute('src') || '');
+        processImageUrl(img.getAttribute('data-src') || '');
+        // Add other lazy-load attributes if needed
+      });
+
+      // 2. Picture tags
+      root.querySelectorAll('picture source').forEach(source => {
+        processImageUrl(source.getAttribute('srcset') || '');
+      });
+
+      // 3. Style attributes
+      root.querySelectorAll('[style*="background-image"]').forEach(el => {
+        const style = el.getAttribute('style') || '';
+        const match = style.match(/url\(['"]?(.*?)['"]?\)/);
+        if (match && match[1]) {
+          processImageUrl(match[1]);
+        }
+      });
+
+      const finalImages = Array.from(imageHashes.values());
+      console.log('Found', finalImages.length, 'images');
+      
+      let newCreditTotal = profile.credits;
+
+      // Deduct credit only if scraping was successful and returned images
+      if (finalImages.length > 0) {
+        console.log('Deducting credit for successful scrape');
+        newCreditTotal = profile.credits - 1;
+        
+        // Only update database if user has a real profile (not default)
+        if (profile.credits !== 10 || user.id) {
+          const { error: updateError } = await supabase
+            .from('profiles')
+            .update({ credits: newCreditTotal })
+            .eq('id', user.id);
+          if (updateError) {
+            console.log('Could not update credits in database (user may not have profile):', updateError);
+            // Don't fail the request if we can't update credits
+          }
+        } else {
+          console.log('User has default profile, not updating database');
+        }
+      } else {
+        console.log('No images found, not deducting credit');
+      }
+      
+      const headers = new Headers();
+      headers.set('X-Credits-Remaining', newCreditTotal.toString());
+
+      console.log('Returning response with', finalImages.length, 'images');
+      return NextResponse.json({ images: finalImages }, { headers });
+
+    } catch (error: any) {
+      console.error('Scraping failed:', error);
+      return NextResponse.json({ error: 'Failed to scrape images from the provided URL.' }, { status: 500 });
     }
-    
-    // Minimal deduplication - only remove exact URL duplicates
-    const seenUrls = new Set<string>();
-    const deduplicatedImages = images.filter(image => {
-      if (seenUrls.has(image.url)) return false;
-      seenUrls.add(image.url);
-      return true;
-    });
-    
-    console.log(`Found ${images.length} images total, deduplicated to ${deduplicatedImages.length} unique images`);
-    return NextResponse.json({ images: deduplicatedImages });
-  } catch (error) {
-    console.error('Scraping failed:', error);
-    return NextResponse.json({ error: 'Failed to scrape images' }, { status: 500 });
+  } catch (error: any) {
+    console.error('Authentication failed:', error);
+    return NextResponse.json({ error: 'Authentication failed.' }, { status: 401 });
   }
 } 
