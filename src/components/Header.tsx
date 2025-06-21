@@ -100,13 +100,13 @@ export default function Header() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => openModal('login')}
-                  className="rounded-lg px-4 py-2 text-sm font-medium text-gray-300 transition-colors hover:text-white"
+                  className="rounded-full px-4 py-2 text-sm font-medium text-gray-300 transition-all duration-200 hover:text-white hover:bg-white/10"
                 >
                   Sign In
                 </button>
                 <button
                   onClick={() => openModal('register')}
-                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+                  className="rounded-full bg-blue-600/80 border border-blue-500/50 px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:bg-blue-500/80"
                 >
                   Sign Up
                 </button>
