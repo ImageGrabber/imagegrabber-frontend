@@ -15,7 +15,8 @@ import {
   LogOut, 
   Menu, 
   X,
-  ChevronRight
+  ChevronRight,
+  Upload
 } from 'lucide-react';
 
 interface DashboardLayoutProps {
@@ -31,6 +32,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const navigation = [
     { name: 'Extract Images', href: '/', icon: Globe },
+    { name: 'Batch Processing', href: '/batch', icon: Upload },
     { name: 'Search History', href: '/history', icon: History },
     { name: 'Credits', href: '/credits', icon: Coins },
     { name: 'Pricing', href: '/pricing', icon: CreditCard },

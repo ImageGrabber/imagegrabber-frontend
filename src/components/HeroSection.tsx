@@ -143,8 +143,8 @@ export default function HeroSection({ isLoading, onScrape }: Props) {
                                       {item.url}
                                     </div>
                                     <div className="text-xs text-gray-500">
-                                      {item.imageCount && `${item.imageCount} images • `}
-                                      {item.timestamp.toLocaleDateString()}
+                                      {item.image_count && `${item.image_count} images • `}
+                                      {new Date(item.created_at).toLocaleDateString()}
                                     </div>
                                   </button>
                                 ))}

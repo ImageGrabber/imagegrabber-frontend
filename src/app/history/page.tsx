@@ -33,7 +33,8 @@ export default function HistoryPage() {
     router.push(`/?url=${encodeURIComponent(url)}`);
   };
 
-  const formatDate = (date: Date) => {
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
     return new Intl.DateTimeFormat('en-US', {
       year: 'numeric',
       month: 'short',
@@ -121,10 +122,10 @@ export default function HistoryPage() {
                       <h3 className="text-lg font-semibold text-gray-200 truncate">
                         {item.title}
                       </h3>
-                      {item.imageCount && (
+                      {item.image_count && (
                         <span className="flex items-center gap-1 rounded-full bg-blue-900/50 border border-blue-700/50 px-3 py-1 text-sm text-blue-300">
                           <ImageIcon className="h-3 w-3" />
-                          {item.imageCount} images
+                          {item.image_count} images
                         </span>
                       )}
                     </div>
@@ -136,7 +137,7 @@ export default function HistoryPage() {
                     
                     <div className="flex items-center gap-2 text-xs text-gray-500">
                       <Calendar className="h-3 w-3" />
-                      {formatDate(item.timestamp)}
+                      {formatDate(item.created_at)}
                     </div>
                   </div>
                   

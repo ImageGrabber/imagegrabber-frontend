@@ -52,17 +52,31 @@ export default function CreditsPage() {
         const creditsData = await creditsResponse.json();
         setCredits(creditsData.credits);
       } else {
-        throw new Error('Failed to fetch credits');
+        console.error('Failed to fetch credits:', creditsResponse.statusText);
+        setError('Failed to fetch credits');
+        setCredits(0); // Set to 0 rather than throwing error
       }
 
-      // Get real transaction data from localStorage for now
-      // In the future, this should come from the database
-      const storedTransactions = localStorage.getItem(`transactions_${user.id}`);
-      const recentTransactions: CreditTransaction[] = storedTransactions 
-        ? JSON.parse(storedTransactions) 
-        : [];
-      
-      setTransactions(recentTransactions);
+      // Get transactions from database (don't let this fail the whole function)
+      try {
+        const transactionsResponse = await fetch('/api/transactions', {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          credentials: 'include',
+        });
+        
+        if (transactionsResponse.ok) {
+          const transactionsData = await transactionsResponse.json();
+          setTransactions(transactionsData.transactions || []);
+        } else {
+          console.error('Failed to fetch transactions:', transactionsResponse.statusText);
+          setTransactions([]);
+        }
+      } catch (transactionError) {
+        console.error('Error fetching transactions:', transactionError);
+        setTransactions([]);
+      }
     } catch (error) {
       console.error('Error fetching credits and history:', error);
       setError(error instanceof Error ? error.message : 'Failed to load credits');

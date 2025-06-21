@@ -147,30 +147,7 @@ export default function Home() {
       const data = await res.json();
       setImages(data.images);
       
-      // Record transaction for credits page
-      if (user && data.images.length > 0) {
-        const transaction = {
-          id: Date.now().toString(),
-          type: 'deduction' as const,
-          amount: -1,
-          description: `Image extraction from ${new URL(url).hostname}`,
-          url: url,
-          images_found: data.images.length,
-          created_at: new Date().toISOString(),
-        };
-        
-        // Store transaction in localStorage (temporary solution)
-        const existingTransactions = localStorage.getItem(`transactions_${user.id}`);
-        const transactions = existingTransactions ? JSON.parse(existingTransactions) : [];
-        transactions.unshift(transaction); // Add to beginning
-        
-        // Keep only last 50 transactions
-        if (transactions.length > 50) {
-          transactions.splice(50);
-        }
-        
-        localStorage.setItem(`transactions_${user.id}`, JSON.stringify(transactions));
-      }
+      // Transaction is now recorded automatically in the scrape API
       
       // Trigger credits refresh
       window.dispatchEvent(new CustomEvent('creditsUpdated'));

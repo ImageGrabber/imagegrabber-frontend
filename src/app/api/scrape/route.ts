@@ -371,6 +371,25 @@ export async function POST(request: NextRequest) {
       const headers = new Headers();
       headers.set('X-Credits-Remaining', newCreditTotal.toString());
 
+      // Record transaction in database if images were found
+      if (finalImages.length > 0) {
+        try {
+          const client = supabaseAdmin || supabase;
+          await client.from('transactions').insert({
+            user_id: user.id,
+            type: 'deduction',
+            amount: -1,
+            description: `Image extraction from ${new URL(url).hostname}`,
+            url: url,
+            images_found: finalImages.length
+          });
+          console.log('Transaction recorded in database');
+        } catch (error) {
+          console.error('Failed to record transaction:', error);
+          // Don't fail the request if we can't record the transaction
+        }
+      }
+
       console.log('Returning response with', finalImages.length, 'images');
       return NextResponse.json({ images: finalImages }, { headers });
 
