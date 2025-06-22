@@ -7,8 +7,9 @@ import DashboardLayout from '@/components/DashboardLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useModal } from '@/contexts/ModalContext';
 import { useSearchHistory, SearchHistoryItem } from '@/contexts/SearchHistoryContext';
-import { History, Search, Trash2, ExternalLink, Calendar, Image as ImageIcon, Globe } from 'lucide-react';
+import { History, Search, Trash2, ExternalLink, Calendar, Image as ImageIcon, Globe, ChevronDown, Eye } from 'lucide-react';
 import Link from 'next/link';
+import ImageGrid from '@/components/ImageGrid';
 
 export default function HistoryPage() {
   const router = useRouter();
@@ -17,6 +18,7 @@ export default function HistoryPage() {
   const { history, clearHistory, removeFromHistory } = useSearchHistory();
   const [searchTerm, setSearchTerm] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
 
   // Use dashboard layout - it handles authentication
   if (!user) {
@@ -42,6 +44,32 @@ export default function HistoryPage() {
       hour: '2-digit',
       minute: '2-digit'
     }).format(date);
+  };
+
+  const handleToggleExpand = (id: string) => {
+    const newExpandedItems = new Set(expandedItems);
+    if (newExpandedItems.has(id)) {
+      newExpandedItems.delete(id);
+    } else {
+      newExpandedItems.add(id);
+    }
+    setExpandedItems(newExpandedItems);
+  };
+
+  const handleDownload = async (url: string, filename: string) => {
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error('Download failed:', error);
+      // You could show a notification to the user here
+    }
   };
 
   const handleClearHistory = () => {
@@ -143,11 +171,11 @@ export default function HistoryPage() {
                   
                   <div className="flex items-center gap-2 ml-4">
                     <button
-                      onClick={() => handleSearchAgain(item.url)}
-                      className="flex items-center gap-2 rounded-full bg-blue-600/80 border border-blue-500/50 px-4 py-2 font-medium text-white transition-all duration-200 hover:bg-blue-500/80"
+                      onClick={() => handleToggleExpand(item.id)}
+                      className="flex items-center gap-2 rounded-full bg-gray-700/80 border border-gray-600/50 px-4 py-2 font-medium text-white transition-all duration-200 hover:bg-gray-600/80"
                     >
-                      <Search className="h-3 w-3" />
-                      Search Again
+                      {expandedItems.has(item.id) ? <ChevronDown className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      View Images
                     </button>
                     <button
                       onClick={() => removeFromHistory(item.id)}
@@ -157,6 +185,11 @@ export default function HistoryPage() {
                     </button>
                   </div>
                 </div>
+                {expandedItems.has(item.id) && (
+                  <div className="mt-6 border-t border-gray-700/50 pt-6">
+                    <ImageGrid images={item.results} onDownload={handleDownload} />
+                  </div>
+                )}
               </div>
             ))}
           </div>

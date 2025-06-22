@@ -57,24 +57,20 @@ export async function GET(request: NextRequest) {
     // Get search history from database
     const { data: history, error } = await client
       .from('search_history')
-      .select('*')
+      .select('id, url, title, image_count, results, created_at')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
       .limit(50);
 
     if (error) {
       console.error('Error fetching search history:', error);
-      return NextResponse.json({ error: 'Failed to fetch search history.' }, { status: 500 });
+      return NextResponse.json({ error: 'Failed to fetch search history' }, { status: 500 });
     }
 
-    console.log('Fetched', history.length, 'search history items for user', user.id);
-    if (history && history.length > 0) {
-      console.log('First item:', JSON.stringify(history[0], null, 2));
-    }
-    return NextResponse.json({ history: history || [] });
+    return NextResponse.json(history);
 
   } catch (error) {
-    console.error('Error in search history API:', error);
+    console.error('Error in GET /api/search-history:', error);
     return NextResponse.json({ error: 'Internal server error.' }, { status: 500 });
   }
 }

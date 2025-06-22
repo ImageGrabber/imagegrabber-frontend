@@ -16,7 +16,16 @@ import {
   Menu, 
   X,
   ChevronRight,
-  Upload
+  Upload,
+  Network,
+  Repeat,
+  LayoutDashboard,
+  ImageDown,
+  Scaling,
+  Image,
+  Clock,
+  Scissors,
+  Sparkles,
 } from 'lucide-react';
 
 interface DashboardLayoutProps {
@@ -31,12 +40,16 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [credits, setCredits] = useState<number | null>(null);
 
   const navigation = [
-    { name: 'Dashboard', href: '/', icon: Globe },
-    { name: 'Extract Images', href: '/extract', icon: Globe },
+    { name: 'Dashboard', href: '/', icon: LayoutDashboard },
+    { name: 'Extract Images', href: '/extract', icon: ImageDown },
+    { name: 'Image Optimizer', href: '/optimizer', icon: Scaling },
+    { name: 'Sitemap Crawler', href: '/sitemap-crawler', icon: Network },
     { name: 'Batch Processing', href: '/batch', icon: Upload },
+    { name: 'Scheduled Extractions', href: '/scheduled-extractions', icon: Repeat },
     { name: 'Search History', href: '/history', icon: History },
     { name: 'Credits', href: '/credits', icon: Coins },
     { name: 'Pricing', href: '/pricing', icon: CreditCard },
+    { name: 'Background Remover', href: '/background-remover', icon: Sparkles },
   ];
 
   const handleSignOut = async () => {

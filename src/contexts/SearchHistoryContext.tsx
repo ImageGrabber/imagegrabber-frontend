@@ -6,10 +6,10 @@ import { useAuth } from './AuthContext';
 export interface SearchHistoryItem {
   id: string;
   url: string;
+  title: string | null;
+  image_count: number;
+  results: { url: string; filename: string }[];
   created_at: string;
-  image_count?: number;
-  title?: string;
-  user_id?: string;
 }
 
 interface SearchHistoryContextType {
@@ -49,8 +49,15 @@ export const SearchHistoryProvider: React.FC<{ children: React.ReactNode }> = ({
         
         if (response.ok) {
           const data = await response.json();
-          console.log('SearchHistory: Loaded', data.history.length, 'items from database');
-          setHistory(data.history || []);
+          if (Array.isArray(data)) {
+            // Ensure all items have a `results` array
+            const sanitizedData = data.map(item => ({
+              ...item,
+              results: item.results || [],
+            }));
+            setHistory(sanitizedData);
+            console.log(`SearchHistory: Loaded ${sanitizedData.length} items from database`);
+          }
         } else {
           console.error('Failed to fetch search history:', response.statusText);
           setHistory([]);
