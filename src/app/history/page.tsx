@@ -20,7 +20,7 @@ export default function HistoryPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
 
-  // Use dashboard layout - it handles authentication
+  // Use layout - it handles authentication
   if (!user) {
     return <DashboardLayout><div /></DashboardLayout>;
   }
