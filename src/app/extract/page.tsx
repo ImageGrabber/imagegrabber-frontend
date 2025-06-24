@@ -1,5 +1,5 @@
 'use client';
-
+// src/app/extract/page.tsx
 import { useState, useMemo, ReactNode } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
 import SearchInput from '@/components/SearchInput';
