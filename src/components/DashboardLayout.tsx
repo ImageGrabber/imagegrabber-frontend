@@ -26,6 +26,23 @@ import {
   Clock,
   Scissors,
   Sparkles,
+  FileText,
+  Palette,
+  Brain,
+  Search,
+  Type,
+  Crop,
+  Home,
+  HelpCircle,
+  Bot,
+  ScanSearch,
+  Tags,
+  Wand2,
+  ChevronDown,
+  LayoutGrid,
+  Target,
+  Boxes,
+  Droplet,
 } from 'lucide-react';
 
 interface DashboardLayoutProps {
@@ -39,17 +56,30 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [credits, setCredits] = useState<number | null>(null);
 
-  const navigation = [
-    { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-    { name: 'Extract Images', href: '/extract', icon: ImageDown },
-    { name: 'Image Optimizer', href: '/optimizer', icon: Scaling },
-    { name: 'Sitemap Crawler', href: '/sitemap-crawler', icon: Network },
-    { name: 'Batch Processing', href: '/batch', icon: Upload },
-    { name: 'Scheduled Extractions', href: '/scheduled-extractions', icon: Repeat },
-    { name: 'Search History', href: '/history', icon: History },
-    { name: 'Credits', href: '/credits', icon: Coins },
-    { name: 'Pricing', href: '/pricing', icon: CreditCard },
-    { name: 'Background Remover', href: '/background-remover', icon: Sparkles },
+  const menuItems = [
+    { name: 'Dashboard', href: '/', icon: LayoutGrid, isHeading: false },
+    { name: 'History', href: '/history', icon: History, isHeading: false },
+
+    { name: 'Image Tools', isHeading: true },
+    { name: 'Single Extraction', href: '/extract', icon: Target, isHeading: false },
+    { name: 'Batch Extraction', href: '/batch', icon: Boxes, isHeading: false },
+    { name: 'Sitemap Crawler', href: '/sitemap-crawler', icon: Network, isHeading: false },
+    { name: 'Domain Crawler', href: '/domain-crawler', icon: Globe, isHeading: false },
+
+    { name: 'AI Tools', isHeading: true },
+    { name: 'Content Classifier', href: '/content-classifier', icon: FileText, isHeading: false },
+    { name: 'Brand Detector', href: '/brand-detector', icon: Tags, isHeading: false },
+    { name: 'Watermark Remover', href: '/watermark-remover', icon: Droplet, isHeading: false },
+    { name: 'Color & Font Detector', href: '/color-and-font-detector', icon: Palette, isHeading: false },
+    { name: 'Text Extractor', href: '/text-extractor', icon: Type, isHeading: false },
+    { name: 'Background Remover', href: '/background-remover', icon: Crop, isHeading: false },
+    { name: 'Optimizer', href: '/optimizer', icon: Wand2, isHeading: false },
+
+    { name: 'Scheduling', isHeading: true },
+    { name: 'Scheduled Extractions', href: '/scheduled-extractions', icon: Clock, isHeading: false },
+    
+    { name: 'Account', isHeading: true },
+    { name: 'Settings', href: '/settings', icon: Settings, isHeading: false },
   ];
 
   const handleSignOut = async () => {
@@ -159,31 +189,28 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 px-4 py-6 space-y-2">
-            {navigation.map((item) => {
-              const isActive = pathname === item.href;
-              return (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  onClick={() => setSidebarOpen(false)}
-                  className={`
-                    flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200
-                    ${isActive 
-                      ? 'bg-blue-600/20 border border-blue-500/30 text-blue-300' 
-                      : 'text-gray-300 hover:bg-gray-800/50 hover:text-white'
-                    }
-                  `}
-                >
-                  <item.icon className="h-5 w-5" />
-                  {item.name}
-                  {isActive && <ChevronRight className="ml-auto h-4 w-4" />}
-                </Link>
-              );
-            })}
-          </nav>
-
-
+          <div className="flex flex-1 flex-col overflow-y-auto">
+            <nav className="flex-1 space-y-1 px-2 py-4">
+              {menuItems.map((item) =>
+                item.isHeading ? (
+                  <h3 key={item.name} className="px-3 pt-4 pb-2 text-xs font-semibold uppercase text-gray-500">
+                    {item.name}
+                  </h3>
+                ) : (
+                  <Link
+                    key={item.name}
+                    href={item.href!}
+                    className={`flex items-center space-x-3 rounded-md px-3 py-2 text-gray-300 transition-all duration-200 hover:bg-gray-700/50 hover:text-white ${
+                      pathname === item.href ? 'bg-gray-700/50 text-white' : ''
+                    }`}
+                  >
+                    {item.icon && <item.icon className="h-5 w-5" />}
+                    <span>{item.name}</span>
+                  </Link>
+                )
+              )}
+            </nav>
+          </div>
         </div>
       </div>
 

@@ -38,20 +38,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
-      
-      // Sync session with the server
-      try {
-        await fetch('/api/auth/callback', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ session }),
-        });
-      } catch (error) {
-        console.error('Auth sync failed:', error);
-      }
-      
       setLoading(false);
     });
 
