@@ -3,7 +3,6 @@ import './globals.css';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ModalProvider } from '@/contexts/ModalContext';
 import { SearchHistoryProvider } from '@/contexts/SearchHistoryContext';
-import { ClassificationHistoryProvider } from '@/contexts/ClassificationHistoryContext';
 import AuthModal from '@/components/AuthModal';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -25,16 +24,14 @@ export default function RootLayout({
       </head>
       <body className={inter.className}>
         <AuthProvider>
-          <ModalProvider>
-            <SearchHistoryProvider>
-              <ClassificationHistoryProvider>
-                <div className="min-h-screen">
-                  {children}
-                </div>
-              </ClassificationHistoryProvider>
-            </SearchHistoryProvider>
-            <AuthModal />
-          </ModalProvider>
+          <SearchHistoryProvider>
+            <ModalProvider>
+              <div className="min-h-screen">
+                {children}
+              </div>
+              <AuthModal />
+            </ModalProvider>
+          </SearchHistoryProvider>
         </AuthProvider>
       </body>
     </html>

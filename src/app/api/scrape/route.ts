@@ -318,6 +318,20 @@ export async function POST(request: NextRequest) {
       
       // --- Start Scraping ---
       
+      // 0. All variant images in .image-wrap.keen-slider-slide img (including hidden)
+      root.querySelectorAll('.image-wrap.keen-slider-slide img').forEach(img => {
+        processImageUrl(img.getAttribute('src') || '');
+        processImageUrl(img.getAttribute('data-src') || '');
+        // Parse srcset and data-srcset for all URLs
+        const srcset = img.getAttribute('srcset') || img.getAttribute('data-srcset') || '';
+        if (srcset) {
+          srcset.split(',').forEach(entry => {
+            const url = entry.trim().split(' ')[0];
+            processImageUrl(url);
+          });
+        }
+      });
+
       // 1. Regular img tags
       root.querySelectorAll('img').forEach(img => {
         processImageUrl(img.getAttribute('src') || '');
@@ -337,6 +351,26 @@ export async function POST(request: NextRequest) {
         if (match && match[1]) {
           processImageUrl(match[1]);
         }
+      });
+
+      // 4. Embedded JSON in <script type="application/ld+json">
+      root.querySelectorAll('script[type="application/ld+json"]').forEach(script => {
+        try {
+          const data = JSON.parse(script.text);
+          if (data && data.image) {
+            if (Array.isArray(data.image)) {
+              (data.image as any[]).forEach((url: any) => processImageUrl(url));
+            } else {
+              processImageUrl(data.image);
+            }
+          }
+          // Shopify sometimes has variants with images
+          if (data && data.hasOwnProperty('offers') && Array.isArray(data.offers)) {
+            (data.offers as any[]).forEach((offer: any) => {
+              if (offer.image) processImageUrl(offer.image);
+            });
+          }
+        } catch {}
       });
 
       const finalImages = Array.from(imageHashes.values());
