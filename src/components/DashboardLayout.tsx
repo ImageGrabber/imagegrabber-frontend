@@ -160,27 +160,28 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
           {/* Navigation */}
           <nav className="flex-1 px-4 py-6 space-y-2">
-            {navigation.map((item) => {
-              const isActive = pathname === item.href;
-              return (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  onClick={() => setSidebarOpen(false)}
-                  className={`
-                    flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200
-                    ${isActive 
-                      ? 'bg-blue-600/20 border border-blue-500/30 text-blue-300' 
-                      : 'text-gray-300 hover:bg-gray-800/50 hover:text-white'
-                    }
-                  `}
-                >
-                  <item.icon className="h-5 w-5" />
-                  {item.name}
-                  {isActive && <ChevronRight className="ml-auto h-4 w-4" />}
-                </Link>
-              );
-            })}
+            {/* Analyze & Extract */}
+            <div className="mb-2">
+              <div className="px-2 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wider">Analyze & Extract</div>
+              <Link href="/extract" onClick={() => setSidebarOpen(false)} className={`${pathname === '/extract' ? 'bg-blue-600/20 border border-blue-500/30 text-blue-300' : 'text-gray-300 hover:bg-gray-800/50 hover:text-white'} flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200`}><ImageDown className="h-5 w-5" />Extract Images{pathname === '/extract' && <ChevronRight className="ml-auto h-4 w-4" />}</Link>
+              <Link href="/batch" onClick={() => setSidebarOpen(false)} className={`${pathname === '/batch' ? 'bg-blue-600/20 border border-blue-500/30 text-blue-300' : 'text-gray-300 hover:bg-gray-800/50 hover:text-white'} flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200`}><Upload className="h-5 w-5" />Batch Processing{pathname === '/batch' && <ChevronRight className="ml-auto h-4 w-4" />}</Link>
+              <Link href="/sitemap-crawler" onClick={() => setSidebarOpen(false)} className={`${pathname === '/sitemap-crawler' ? 'bg-blue-600/20 border border-blue-500/30 text-blue-300' : 'text-gray-300 hover:bg-gray-800/50 hover:text-white'} flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200`}><Network className="h-5 w-5" />Sitemap Crawler{pathname === '/sitemap-crawler' && <ChevronRight className="ml-auto h-4 w-4" />}</Link>
+              <Link href="/scheduled-extractions" onClick={() => setSidebarOpen(false)} className={`${pathname === '/scheduled-extractions' ? 'bg-blue-600/20 border border-blue-500/30 text-blue-300' : 'text-gray-300 hover:bg-gray-800/50 hover:text-white'} flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200`}><Repeat className="h-5 w-5" />Scheduled Extractions{pathname === '/scheduled-extractions' && <ChevronRight className="ml-auto h-4 w-4" />}</Link>
+            </div>
+            {/* Image Tools */}
+            <div className="mb-2">
+              <div className="px-2 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wider">Image Tools</div>
+              <Link href="/optimizer" onClick={() => setSidebarOpen(false)} className={`${pathname === '/optimizer' ? 'bg-blue-600/20 border border-blue-500/30 text-blue-300' : 'text-gray-300 hover:bg-gray-800/50 hover:text-white'} flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200`}><Scaling className="h-5 w-5" />Image Optimizer{pathname === '/optimizer' && <ChevronRight className="ml-auto h-4 w-4" />}</Link>
+              <Link href="/background-remover" onClick={() => setSidebarOpen(false)} className={`${pathname === '/background-remover' ? 'bg-blue-600/20 border border-blue-500/30 text-blue-300' : 'text-gray-300 hover:bg-gray-800/50 hover:text-white'} flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200`}><Sparkles className="h-5 w-5" />Background Remover{pathname === '/background-remover' && <ChevronRight className="ml-auto h-4 w-4" />}</Link>
+            </div>
+            {/* Manage & Monitor */}
+            <div className="mb-2">
+              <div className="px-2 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wider">Manage & Monitor</div>
+              <Link href="/history" onClick={() => setSidebarOpen(false)} className={`${pathname === '/history' ? 'bg-blue-600/20 border border-blue-500/30 text-blue-300' : 'text-gray-300 hover:bg-gray-800/50 hover:text-white'} flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200`}><History className="h-5 w-5" />Search History{pathname === '/history' && <ChevronRight className="ml-auto h-4 w-4" />}</Link>
+              <Link href="/credits" onClick={() => setSidebarOpen(false)} className={`${pathname === '/credits' ? 'bg-blue-600/20 border border-blue-500/30 text-blue-300' : 'text-gray-300 hover:bg-gray-800/50 hover:text-white'} flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200`}><Coins className="h-5 w-5" />Credits{pathname === '/credits' && <ChevronRight className="ml-auto h-4 w-4" />}</Link>
+              <Link href="/pricing" onClick={() => setSidebarOpen(false)} className={`${pathname === '/pricing' ? 'bg-blue-600/20 border border-blue-500/30 text-blue-300' : 'text-gray-300 hover:bg-gray-800/50 hover:text-white'} flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200`}><CreditCard className="h-5 w-5" />Pricing{pathname === '/pricing' && <ChevronRight className="ml-auto h-4 w-4" />}</Link>
+              <Link href="/settings" onClick={() => setSidebarOpen(false)} className={`${pathname === '/settings' ? 'bg-blue-600/20 border border-blue-500/30 text-blue-300' : 'text-gray-300 hover:bg-gray-800/50 hover:text-white'} flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200`}><Settings className="h-5 w-5" />Settings{pathname === '/settings' && <ChevronRight className="ml-auto h-4 w-4" />}</Link>
+            </div>
           </nav>
 
 

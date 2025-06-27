@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 import Header from '@/components/Header';
 import { useRouter } from 'next/navigation';
 import React from 'react';
+import DashboardLayout from '@/components/DashboardLayout';
 
 interface UserSettings {
   wordpress_url?: string;
@@ -115,7 +116,7 @@ export default function SettingsPage() {
   );
 
   const shopifySteps = (
-    <div className="space-y-2 text-sm text-gray-700">
+    <div className="space-y-2 text-sm text-white">
       <h3 className="font-semibold mb-2">Shopify Integration Steps</h3>
       <ol className="list-decimal list-inside space-y-1">
         <li>Log in to your Shopify admin dashboard</li>
@@ -126,7 +127,7 @@ export default function SettingsPage() {
         <li>Install the app and copy the <b>Admin API access token</b></li>
         <li>Fill in the Shopify section here and click <b>Save Settings</b></li>
       </ol>
-      <div className="mt-2 text-xs text-gray-500">
+      <div className="mt-2 text-xs text-white">
         Access token should start with <code>shpat_</code>.<br/>
         Product ID is optional - leave empty to upload as theme assets.
       </div>
@@ -135,12 +136,11 @@ export default function SettingsPage() {
 
   if (loading || isLoading) {
     return (
-      <>
-        <Header />
-        <div className="min-h-screen bg-blue-900 flex items-center justify-center">
+      <DashboardLayout>
+        <div className="min-h-screen flex items-center justify-center">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-white border-t-transparent"></div>
         </div>
-      </>
+      </DashboardLayout>
     );
   }
 
@@ -149,38 +149,41 @@ export default function SettingsPage() {
   }
 
   return (
-    <>
-      <Header />
-      <div className="min-h-screen bg-blue-900 py-8">
+    <DashboardLayout>
+      <div className="p-6">
         <div className="container mx-auto max-w-5xl px-4">
-          <div className="flex flex-col md:flex-row gap-8 mt-8">
-            {/* Sidebar (Platform Tabs) */}
-            <aside className="w-full md:w-1/3">
-              <div className="flex flex-row md:flex-col gap-4 md:gap-6 bg-white rounded-lg shadow-md p-4 md:p-6">
-                <button
-                  className={`flex-1 md:flex-none text-center px-4 py-3 rounded font-semibold transition-colors border-2 ${selectedPlatform === 'wordpress' ? 'bg-blue-50 border-blue-500 text-blue-900' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-100'}`}
-                  onClick={() => setSelectedPlatform('wordpress')}
-                >
-                  WordPress
-                </button>
-                <button
-                  className={`flex-1 md:flex-none text-center px-4 py-3 rounded font-semibold transition-colors border-2 ${selectedPlatform === 'shopify' ? 'bg-green-50 border-green-500 text-green-900' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-100'}`}
-                  onClick={() => setSelectedPlatform('shopify')}
-                >
-                  Shopify
-                </button>
-              </div>
-            </aside>
+          <div className="flex flex-col gap-8 mt-8 items-center">
+            {/* Tabs on top */}
+            <div className="flex flex-row gap-4 w-full max-w-lg bg-white/10 border border-white/10 backdrop-blur-md shadow-lg rounded-xl p-4 justify-center">
+              <button
+                className={`flex-1 text-center px-4 py-3 rounded-lg font-semibold transition-all border-2 ${selectedPlatform === 'wordpress'
+                  ? 'bg-blue-600/80 border-blue-500/80 text-white shadow-lg backdrop-blur-md'
+                  : 'bg-transparent border-transparent text-gray-200 hover:bg-white/10 hover:border-white/20'}
+                `}
+                onClick={() => setSelectedPlatform('wordpress')}
+              >
+                WordPress
+              </button>
+              <button
+                className={`flex-1 text-center px-4 py-3 rounded-lg font-semibold transition-all border-2 ${selectedPlatform === 'shopify'
+                  ? 'bg-blue-600/80 border-blue-500/80 text-white shadow-lg backdrop-blur-md'
+                  : 'bg-transparent border-transparent text-gray-200 hover:bg-white/10 hover:border-white/20'}
+                `}
+                onClick={() => setSelectedPlatform('shopify')}
+              >
+                Shopify
+              </button>
+            </div>
 
-            {/* Main Content */}
-            <main className="w-full md:w-2/3">
-              <div className="rounded-lg bg-white p-6 md:p-8 shadow-xl mt-4 md:mt-0">
-                <h1 className="mb-8 text-3xl font-bold text-gray-900">Integration Settings</h1>
+            {/* Main Content Card below */}
+            <main className="w-full max-w-2xl">
+              <div className="bg-white/10 border border-white/10 backdrop-blur-md shadow-xl rounded-2xl p-8 mt-0">
+                <h1 className="mb-8 text-3xl font-bold text-gray-100">Integration Settings</h1>
                 {message && (
                   <div className={`mb-6 rounded-lg p-4 ${
                     message.type === 'success' 
-                      ? 'bg-green-50 text-green-700 border border-green-200' 
-                      : 'bg-red-50 text-red-700 border border-red-200'
+                      ? 'bg-green-400/10 text-green-200 border border-green-400/20' 
+                      : 'bg-red-400/10 text-red-200 border border-red-400/20'
                   }`}>
                     {message.text}
                   </div>
@@ -188,130 +191,125 @@ export default function SettingsPage() {
                 <form onSubmit={saveSettings} className="space-y-8">
                   {/* WordPress Settings */}
                   {selectedPlatform === 'wordpress' && (
-                    <div className="rounded-lg border border-gray-200 p-6">
-                      <h2 className="mb-4 text-xl font-semibold text-gray-900 flex items-center">
-                        <svg className="mr-2 h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur p-6">
+                      <h2 className="mb-4 text-xl font-semibold text-gray-100 flex items-center">
+                        <svg className="mr-2 h-6 w-6 text-blue-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                         </svg>
                         WordPress Integration
                       </h2>
                       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <label className="block text-sm font-medium text-gray-200 mb-2">
                             WordPress URL
                           </label>
                           <input
-                            type="url"
+                            type="text"
+                            className="w-full rounded-lg border border-white/10 bg-white/10 text-white placeholder-gray-400 p-2 focus:ring-2 focus:ring-blue-400/40 focus:bg-white/20 transition"
                             value={settings.wordpress_url || ''}
-                            onChange={(e) => handleInputChange('wordpress_url', e.target.value)}
-                            placeholder="https://yoursite.com"
-                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 bg-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            onChange={e => handleInputChange('wordpress_url', e.target.value)}
+                            placeholder="https://yourwordpresssite.com"
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <label className="block text-sm font-medium text-gray-200 mb-2">
                             Username
                           </label>
                           <input
                             type="text"
+                            className="w-full rounded-lg border border-white/10 bg-white/10 text-white placeholder-gray-400 p-2 focus:ring-2 focus:ring-blue-400/40 focus:bg-white/20 transition"
                             value={settings.wordpress_username || ''}
-                            onChange={(e) => handleInputChange('wordpress_username', e.target.value)}
-                            placeholder="Your WordPress username"
-                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 bg-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            onChange={e => handleInputChange('wordpress_username', e.target.value)}
+                            placeholder="WordPress Username"
                           />
                         </div>
-                        <div className="md:col-span-2">
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-200 mb-2">
                             Application Password
                           </label>
                           <input
                             type="password"
+                            className="w-full rounded-lg border border-white/10 bg-white/10 text-white placeholder-gray-400 p-2 focus:ring-2 focus:ring-blue-400/40 focus:bg-white/20 transition"
                             value={settings.wordpress_password || ''}
-                            onChange={(e) => handleInputChange('wordpress_password', e.target.value)}
-                            placeholder="WordPress Application Password (not your login password)"
-                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 bg-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            onChange={e => handleInputChange('wordpress_password', e.target.value)}
+                            placeholder="Application Password"
                           />
-                          <p className="mt-1 text-xs text-gray-500">
-                            Generate this in WordPress Admin → Users → Your Profile → Application Passwords
-                          </p>
+                        </div>
+                      </div>
+                      <div className="mt-4">
+                        <div className="bg-white/5 border border-white/10 rounded-lg p-4 text-white">
+                          {wordpressSteps}
                         </div>
                       </div>
                     </div>
                   )}
                   {/* Shopify Settings */}
                   {selectedPlatform === 'shopify' && (
-                    <div className="rounded-lg border border-gray-200 p-6">
-                      <h2 className="mb-4 text-xl font-semibold text-gray-900 flex items-center">
-                        <svg className="mr-2 h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                    <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur p-6">
+                      <h2 className="mb-4 text-xl font-semibold text-gray-100 flex items-center">
+                        <svg className="mr-2 h-6 w-6 text-green-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                         </svg>
                         Shopify Integration
                       </h2>
                       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Store Name
+                          <label className="block text-sm font-medium text-gray-200 mb-2">
+                            Store URL
                           </label>
                           <input
                             type="text"
+                            className="w-full rounded-lg border border-white/10 bg-white/10 text-white placeholder-gray-400 p-2 focus:ring-2 focus:ring-green-400/40 focus:bg-white/20 transition"
                             value={settings.shopify_store || ''}
-                            onChange={(e) => handleInputChange('shopify_store', e.target.value)}
+                            onChange={e => handleInputChange('shopify_store', e.target.value)}
                             placeholder="yourstore.myshopify.com"
-                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 bg-white focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Product ID (Optional)
-                          </label>
-                          <input
-                            type="text"
-                            value={settings.shopify_product_id || ''}
-                            onChange={(e) => handleInputChange('shopify_product_id', e.target.value)}
-                            placeholder="123456789"
-                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 bg-white focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
-                          />
-                          <p className="mt-1 text-xs text-gray-500">
-                            Leave empty to upload as theme assets
-                          </p>
-                        </div>
-                        <div className="md:col-span-2">
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <label className="block text-sm font-medium text-gray-200 mb-2">
                             Access Token
                           </label>
                           <input
                             type="password"
+                            className="w-full rounded-lg border border-white/10 bg-white/10 text-white placeholder-gray-400 p-2 focus:ring-2 focus:ring-green-400/40 focus:bg-white/20 transition"
                             value={settings.shopify_access_token || ''}
-                            onChange={(e) => handleInputChange('shopify_access_token', e.target.value)}
-                            placeholder="Shopify Admin API access token"
-                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 bg-white focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
+                            onChange={e => handleInputChange('shopify_access_token', e.target.value)}
+                            placeholder="Admin API Access Token"
                           />
-                          <p className="mt-1 text-xs text-gray-500">
-                            Create a private app in Shopify Admin to get this token
-                          </p>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-200 mb-2">
+                            Product ID (optional)
+                          </label>
+                          <input
+                            type="text"
+                            className="w-full rounded-lg border border-white/10 bg-white/10 text-white placeholder-gray-400 p-2 focus:ring-2 focus:ring-green-400/40 focus:bg-white/20 transition"
+                            value={settings.shopify_product_id || ''}
+                            onChange={e => handleInputChange('shopify_product_id', e.target.value)}
+                            placeholder="Product ID (optional)"
+                          />
+                        </div>
+                      </div>
+                      <div className="mt-4">
+                        <div className="bg-white/5 border border-white/10 rounded-lg p-4 text-gray-200">
+                          {shopifySteps}
                         </div>
                       </div>
                     </div>
                   )}
-                  <div className="flex justify-end">
-                    <button
-                      type="submit"
-                      className="mt-4 px-6 py-3 bg-orange-500 text-white font-semibold rounded-lg shadow hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-offset-2 disabled:opacity-50"
-                      disabled={isSaving}
-                    >
-                      {isSaving ? 'Saving...' : 'Save Settings'}
-                    </button>
-                  </div>
+                  <button
+                    className="w-full mt-4 rounded-lg bg-blue-600/80 text-white font-semibold py-3 shadow-lg hover:bg-blue-700/80 focus:outline-none focus:ring-2 focus:ring-blue-400/40 focus:ring-offset-2 focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                    type="submit"
+                    disabled={isSaving}
+                  >
+                    {isSaving ? 'Saving...' : 'Save Settings'}
+                  </button>
                 </form>
-                {/* Integration Steps Below Form */}
-                <div className="mt-10">
-                  {selectedPlatform === 'wordpress' ? wordpressSteps : shopifySteps}
-                </div>
               </div>
             </main>
           </div>
         </div>
       </div>
-    </>
+    </DashboardLayout>
   );
 } 
