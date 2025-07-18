@@ -169,7 +169,7 @@ export default function ImageViewerModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75" onClick={handleBackdropClick}>
-      <div className="relative max-w-4xl max-h-[90vh] w-full mx-4 bg-white rounded-lg shadow-xl overflow-hidden">
+      <div className="relative max-w-4xl max-h-[90vh] w-full mx-4 bg-white rounded-lg shadow-xl overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50">
           <div className="flex-1 min-w-0">
@@ -209,7 +209,7 @@ export default function ImageViewerModal({
         {/* Image Display */}
         <div
           ref={imageContainerRef}
-          className={`relative bg-gray-100 flex items-center justify-center ${isFullscreen ? 'fixed inset-0 z-[100] bg-black max-w-none max-h-none w-screen h-screen' : ''}`}
+          className={`relative bg-gray-100 flex-1 flex items-center justify-center overflow-auto ${isFullscreen ? 'fixed inset-0 z-[100] bg-black max-w-none max-h-none w-screen h-screen' : ''}`}
           style={isFullscreen ? { minHeight: '100vh', maxHeight: '100vh' } : { minHeight: '400px', maxHeight: '60vh' }}
         >
           {/* Zoom/Fullscreen Button */}
@@ -278,7 +278,7 @@ export default function ImageViewerModal({
         </div>
 
         {/* Action Buttons */}
-        <div className="p-4 border-t border-gray-200 bg-gray-50">
+        <div className="p-4 border-t border-gray-200 bg-gray-50 flex-shrink-0">
           <div className="flex flex-wrap items-center justify-between gap-4">
             {/* Download Button */}
             <button

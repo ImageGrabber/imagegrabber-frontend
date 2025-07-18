@@ -1,5 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import sharp from 'sharp';
+import { v2 as cloudinary } from 'cloudinary';
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME!,
+  api_key: process.env.CLOUDINARY_API_KEY!,
+  api_secret: process.env.CLOUDINARY_API_SECRET!,
+});
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -58,14 +66,39 @@ export async function POST(request: NextRequest) {
     if (!imageResponse.ok) {
       throw new Error('Failed to download image');
     }
-    const imageBuffer = await imageResponse.arrayBuffer();
+    const arrayBuffer = await imageResponse.arrayBuffer();
+    const imageBuffer = Buffer.from(new Uint8Array(arrayBuffer));
+
+    // Upload to Cloudinary with black background transformation
+    let cloudinaryUrl = null;
+    try {
+      const uploadResult = await cloudinary.uploader.upload(image.url, {
+        transformation: [
+          { background: 'black', crop: 'pad' },
+        ],
+        folder: 'wordpress_uploads',
+        overwrite: true,
+        resource_type: 'image',
+      });
+      cloudinaryUrl = uploadResult.secure_url;
+    } catch (err) {
+      console.error('Cloudinary upload failed, falling back to original image:', err);
+    }
 
     // Get content type from the original response
     const contentType = imageResponse.headers.get('content-type') || 'image/jpeg';
 
     // Create form data for WordPress upload
     const formData = new FormData();
-    formData.append('file', new Blob([imageBuffer], { type: contentType }), image.filename);
+    if (cloudinaryUrl) {
+      // Download the processed image from Cloudinary
+      const processedResponse = await fetch(cloudinaryUrl);
+      const processedBuffer = Buffer.from(new Uint8Array(await processedResponse.arrayBuffer()));
+      formData.append('file', new Blob([processedBuffer], { type: 'image/jpeg' }), image.filename.replace(/\.[^.]+$/, '.jpg'));
+    } else {
+      // Fallback to original image
+      formData.append('file', new Blob([imageBuffer], { type: contentType }), image.filename);
+    }
 
     // Upload to WordPress media library
     const uploadResponse = await fetch(`${wpUrl}/wp-json/wp/v2/media`, {

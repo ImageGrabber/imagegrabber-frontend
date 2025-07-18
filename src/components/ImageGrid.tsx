@@ -413,26 +413,18 @@ export default function ImageGrid({ images, onDownload, onAuthRequired }: ImageG
         )}
       </div>
 
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-        {images.map((image, index) => (
-          <div
-            key={getImageId(image, index)}
-            className="animate-fade-in"
-            style={{ animationDelay: `${index * 50}ms` }}
-          >
-            <ImageCard
-              image={image}
-              onDownload={onDownload}
-              onSelect={(img, selected) => handleSelect(img, index, selected)}
-              isSelected={selectedImages.has(getImageId(image, index))}
-              onAuthRequired={onAuthRequired}
-              onShowResult={(result) => {
-                setResultMessage(result);
-                setShowResultDialog(true);
-              }}
-              onImageClick={handleImageClick}
-            />
-          </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+        {images.map((img, index) => (
+          <ImageCard
+            key={img.url}
+            image={img}
+            onDownload={onDownload}
+            onSelect={(image, selected) => handleSelect(image, index, selected)}
+            isSelected={selectedImages.has(getImageId(img, index))}
+            onAuthRequired={onAuthRequired}
+            onShowResult={handleShowResult}
+            onImageClick={() => handleImageClick(img)}
+          />
         ))}
       </div>
 

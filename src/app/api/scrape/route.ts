@@ -3,6 +3,9 @@ import { parse, HTMLElement } from 'node-html-parser';
 import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
 import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
+import puppeteer from 'puppeteer';
+import type { Page } from 'puppeteer';
+import fs from 'fs';
 
 // Create a service role client for admin operations (if available)
 const supabaseAdmin = process.env.SUPABASE_SERVICE_ROLE_KEY ? createClient(
@@ -181,6 +184,26 @@ function getImageContentHash(url: string): string {
   }
 }
 
+// Helper for Puppeteer: collect images from keen slider
+async function collectKeenSliderImages(page: Page): Promise<string[]> {
+  return await page.evaluate(() => {
+    const slides = Array.from(document.querySelectorAll('.keen-slider__slide'));
+    const urls = [];
+    for (const slide of slides) {
+      const style = slide.getAttribute('style') || '';
+      const bgMatch = style.match(/url\(["']?(.*?)["']?\)/);
+      if (bgMatch && bgMatch[1]) {
+        urls.push(bgMatch[1].startsWith('//') ? 'https:' + bgMatch[1] : bgMatch[1]);
+      }
+      const img = slide.querySelector('img');
+      if (img && img.src) {
+        urls.push(img.src.startsWith('//') ? 'https:' + img.src : img.src);
+      }
+    }
+    return urls;
+  });
+}
+
 export async function POST(request: NextRequest) {
   const cookieStore = cookies();
   const supabase = createServerComponentClient({ cookies: () => cookieStore });
@@ -273,10 +296,141 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'You are out of credits.' }, { status: 402 });
     }
 
-    const { url } = await request.json();
+    const { url, puppeteer: usePuppeteer } = await request.json();
 
     if (!url) {
       return NextResponse.json({ error: 'URL parameter is required' }, { status: 400 });
+    }
+
+    if (usePuppeteer) {
+      console.log('Puppeteer: Starting extraction block');
+      console.log('Starting Puppeteer scrape for URL:', url);
+      try {
+        // Validate URL before navigation
+        if (!url || typeof url !== 'string' || !/^https?:\/\//.test(url)) {
+          throw new Error('Invalid URL for Puppeteer navigation: ' + url);
+        }
+        const browser = await puppeteer.launch({ headless: false, slowMo: 100 });
+        const page = await browser.newPage();
+
+        // Set a real user-agent
+        await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36');
+        // Set extra HTTP headers
+        await page.setExtraHTTPHeaders({
+          'accept-language': 'en-US,en;q=0.9'
+        });
+
+        await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
+
+        // Dismiss cookie consent popup if present
+        try {
+          await page.waitForSelector('button[aria-label="I AGREE"], button, .cc-compliance button', { timeout: 5000 });
+          await page.evaluate(() => {
+            const btn = document.querySelector('button[aria-label="I AGREE"]')
+              || Array.from(document.querySelectorAll('button')).find(b => b.textContent?.trim().toUpperCase() === 'I AGREE')
+              || document.querySelector('.cc-compliance button');
+            if (btn) (btn as HTMLButtonElement).click();
+          });
+          await page.evaluate(() => new Promise(res => setTimeout(res, 1000)));
+        } catch (e) {
+          // If not found, continue
+        }
+
+        // Log all class names in the DOM for debugging (before any waitForSelector)
+        const allClasses = await page.evaluate(() => Array.from(document.querySelectorAll('*')).map(e => e.className));
+        let classLog = '--- ALL CLASS NAMES IN DOM START ---\n';
+        allClasses.forEach(cls => {
+          if (cls && typeof cls === 'string' && cls.trim().length > 0) {
+            cls.split(' ').forEach(singleClass => {
+              if (singleClass.trim().length > 0) {
+                classLog += singleClass.trim() + '\n';
+              }
+            });
+          }
+        });
+        classLog += '--- ALL CLASS NAMES IN DOM END ---\n';
+        fs.writeFileSync('puppeteer-classnames.txt', classLog);
+
+        // Scroll halfway down the page to trigger lazy loading
+        await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight / 2));
+        await page.evaluate(() => new Promise(res => setTimeout(res, 1000)));
+
+        // Wait for the slider slides (use .keen-slider-slide)
+        await page.waitForSelector('.keen-slider-slide', { timeout: 30000 });
+
+        // Take a screenshot for debugging
+        await page.screenshot({ path: 'puppeteer-debug.png', fullPage: true });
+
+        // Try waiting for any product image to appear
+        try {
+          await page.waitForSelector("img[src*='jeandousset.com/cdn/shop/files/']", { timeout: 30000 });
+        } catch (e) {
+          console.log('No product images found with generic selector.');
+        }
+
+        // Now extract images from .keen-slider-slide
+        const imageUrls = new Set();
+        let urls = await page.evaluate(() => {
+          const slides = Array.from(document.querySelectorAll('.keen-slider-slide'));
+          const urls = [];
+          for (const slide of slides) {
+            const style = slide.getAttribute('style') || '';
+            const bgMatch = style.match(/url\(["']?(.*?)["']?\)/);
+            if (bgMatch && bgMatch[1]) {
+              urls.push(bgMatch[1].startsWith('//') ? 'https:' + bgMatch[1] : bgMatch[1]);
+            }
+            const img = slide.querySelector('img');
+            if (img && img.src) {
+              urls.push(img.src.startsWith('//') ? 'https:' + img.src : img.src);
+            }
+          }
+          return urls;
+        });
+        urls.forEach(url => imageUrls.add(url));
+        // Try clicking next arrow as before
+        let canClick = true;
+        let lastCount = 0;
+        while (canClick) {
+          try {
+            await page.click('.keen-arrow.next, .keen-arrow.next-arrow, .keen-arrow-right');
+            await page.evaluate(() => new Promise(res => setTimeout(res, 500)));
+            urls = await page.evaluate(() => {
+              const slides = Array.from(document.querySelectorAll('.keen-slider-slide'));
+              const urls = [];
+              for (const slide of slides) {
+                const style = slide.getAttribute('style') || '';
+                const bgMatch = style.match(/url\(["']?(.*?)["']?\)/);
+                if (bgMatch && bgMatch[1]) {
+                  urls.push(bgMatch[1].startsWith('//') ? 'https:' + bgMatch[1] : bgMatch[1]);
+                }
+                const img = slide.querySelector('img');
+                if (img && img.src) {
+                  urls.push(img.src.startsWith('//') ? 'https:' + img.src : img.src);
+                }
+              }
+              return urls;
+            });
+            urls.forEach(url => imageUrls.add(url));
+            if (imageUrls.size === lastCount) {
+              canClick = false;
+            } else {
+              lastCount = imageUrls.size;
+            }
+          } catch (e) {
+            canClick = false;
+          }
+        }
+        await browser.close();
+        const images = Array.from(imageUrls) as string[];
+        const formattedImages = images.map((url: string) => ({
+          url,
+          filename: url.split('/').pop()?.split('?')[0] || 'image.jpg'
+        }));
+        return NextResponse.json({ images: formattedImages });
+      } catch (error) {
+        console.error('Puppeteer scraping failed:', error);
+        return NextResponse.json({ error: 'Failed to scrape images with Puppeteer.' }, { status: 500 });
+      }
     }
 
     console.log('Starting scrape for URL:', url);
@@ -348,6 +502,16 @@ export async function POST(request: NextRequest) {
       root.querySelectorAll('[style*="background-image"]').forEach(el => {
         const style = el.getAttribute('style') || '';
         const match = style.match(/url\(['"]?(.*?)['"]?\)/);
+        if (match && match[1]) {
+          processImageUrl(match[1]);
+        }
+      });
+
+      // 3b. Keen-slider slides with background or background-image
+      root.querySelectorAll('.keen-slider__slide').forEach(el => {
+        const style = el.getAttribute('style') || '';
+        // Match both background and background-image
+        const match = style.match(/background(?:-image)?:\s*url\(['"]?(.*?)['"]?\)/);
         if (match && match[1]) {
           processImageUrl(match[1]);
         }

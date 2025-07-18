@@ -22,6 +22,9 @@ export default function ExtractPage() {
     sortBy: 'filename',
     sortOrder: 'asc'
   });
+  const [usePuppeteer, setUsePuppeteer] = useState(false);
+  const [showExtractDialog, setShowExtractDialog] = useState(false);
+  const [extractDialogMessage, setExtractDialogMessage] = useState('');
 
   const { user } = useAuth();
   const { openModal } = useModal();
@@ -42,6 +45,11 @@ export default function ExtractPage() {
     setIsLoading(true);
     setError(null);
     setLastSearchUrl(url);
+    setShowExtractDialog(true);
+    setExtractDialogMessage(usePuppeteer
+      ? 'Using Puppeteer (headless browser) to extract all images, including dynamic sliders...'
+      : 'Using default extraction (fast, no JavaScript)...'
+    );
 
     try {
       const { supabase } = await import('@/lib/supabase');
@@ -49,6 +57,7 @@ export default function ExtractPage() {
       
       if (!session) {
         openModal('login', 'Your session has expired. Please sign in again.');
+        setShowExtractDialog(false);
         return;
       }
       
@@ -56,7 +65,7 @@ export default function ExtractPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
         credentials: 'include',
-        body: JSON.stringify({ url }),
+        body: JSON.stringify({ url, puppeteer: usePuppeteer }),
       });
 
       if (!res.ok) {
@@ -88,6 +97,7 @@ export default function ExtractPage() {
       setError(err instanceof Error ? err.message : 'Something went wrong - try again');
     } finally {
       setIsLoading(false);
+      setShowExtractDialog(false);
     }
   };
 
@@ -106,11 +116,36 @@ export default function ExtractPage() {
   return (
     <DashboardLayout>
       <div className="p-6">
+        {/* Extraction method dialog */}
+        {showExtractDialog && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+            <div className="rounded-xl bg-gray-900 border border-gray-700/50 p-6 shadow-xl text-center max-w-md w-full">
+              <div className="flex flex-col items-center gap-4">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent"></div>
+                <p className="text-lg text-white font-semibold">Extracting Images...</p>
+                <p className="text-gray-300 text-sm">{extractDialogMessage}</p>
+              </div>
+            </div>
+          </div>
+        )}
         <div className="mb-8">
           <div className="max-w-4xl mx-auto">
             <div className="mt-10 mb-6">
               <h1 className="text-2xl font-semibold text-white mb-2">Extract Images</h1>
               <p className="text-gray-400">Enter a website URL to extract all images</p>
+            </div>
+            {/* Puppeteer toggle */}
+            <div className="mb-4 flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="puppeteer-toggle"
+                checked={usePuppeteer}
+                onChange={e => setUsePuppeteer(e.target.checked)}
+                className="h-4 w-4 rounded border-gray-400"
+              />
+              <label htmlFor="puppeteer-toggle" className="text-sm text-gray-200 select-none">
+                Use Puppeteer (headless browser, best for dynamic sliders)
+              </label>
             </div>
             <SearchInput 
               onScrape={handleScrape}

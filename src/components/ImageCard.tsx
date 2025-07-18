@@ -145,6 +145,13 @@ export default function ImageCard({ image, onDownload, onSelect, isSelected = fa
     }
   };
 
+  // Helper to ensure image URLs are absolute
+  const getAbsoluteUrl = (url: string) => {
+    if (url.startsWith('//')) return 'https:' + url;
+    if (url.startsWith('http')) return url;
+    return url;
+  };
+
   return (
     <>
       <div className={`group relative overflow-hidden rounded-xl bg-gray-900/80 border border-gray-700/50 shadow-md transition-all duration-300 hover:shadow-xl ${isSelected ? 'ring-2 ring-blue-500' : ''}`}>
@@ -185,7 +192,7 @@ export default function ImageCard({ image, onDownload, onSelect, isSelected = fa
           onClick={() => onImageClick?.(image)}
         >
           <img
-            src={image.url}
+            src={getAbsoluteUrl(image.url)}
             alt={image.filename}
             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
             onLoad={handleImageLoad}
@@ -195,8 +202,8 @@ export default function ImageCard({ image, onDownload, onSelect, isSelected = fa
         </div>
 
         {/* Overlay with actions */}
-        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-0 transition-all duration-300 group-hover:bg-opacity-50">
-          <div className="flex gap-2 translate-y-4 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
+        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-0 transition-all duration-300 group-hover:bg-opacity-50 pointer-events-none">
+          <div className="flex gap-2 translate-y-4 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100 pointer-events-auto">
             <button
               onClick={e => { e.stopPropagation(); onDownload(image.url, image.filename); }}
               className="rounded-full bg-gray-800/90 p-3 text-gray-200 shadow-lg transition-all duration-200 hover:bg-blue-600 hover:text-white disabled:opacity-50 border border-gray-600/50"
@@ -272,7 +279,7 @@ export default function ImageCard({ image, onDownload, onSelect, isSelected = fa
             <div className="space-y-3">
               <div className="flex items-center gap-3">
                 <img 
-                  src={image.url} 
+                  src={getAbsoluteUrl(image.url)} 
                   alt={image.filename}
                   className="w-12 h-12 rounded object-cover border border-gray-600"
                 />

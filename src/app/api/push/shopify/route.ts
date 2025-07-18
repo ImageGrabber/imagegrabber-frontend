@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import sharp from 'sharp';
+import { v2 as cloudinary } from 'cloudinary';
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME!,
+  api_key: process.env.CLOUDINARY_API_KEY!,
+  api_secret: process.env.CLOUDINARY_API_SECRET!,
+});
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -60,17 +67,61 @@ export async function POST(request: NextRequest) {
     if (!imageResponse.ok) {
       throw new Error('Failed to download image');
     }
-    const imageBuffer = await imageResponse.arrayBuffer();
-
-    // Use sharp to check and resize if needed
-    let processedBuffer: Buffer = Buffer.from(new Uint8Array(imageBuffer));
+    const arrayBuffer = await imageResponse.arrayBuffer();
+    let processedBuffer: Buffer = Buffer.from(new Uint8Array(arrayBuffer));
     let width, height;
+
+    // Always composite over a black background using sharp
     try {
-      const metadata = await sharp(processedBuffer).metadata();
+      const sharpImage = sharp(processedBuffer);
+      const metadata = await sharpImage.metadata();
+      width = metadata.width || 800;
+      height = metadata.height || 800;
+      processedBuffer = await sharp({
+        create: {
+          width,
+          height,
+          channels: 3,
+          background: { r: 0, g: 0, b: 0 }
+        }
+      })
+        .composite([{ input: processedBuffer, blend: 'over' }])
+        .jpeg()
+        .toBuffer();
+    } catch (err) {
+      console.error('Error compositing image over black background with sharp:', err);
+      // Optionally, handle error or fallback to original buffer
+    }
+
+    // Upload to Cloudinary with black background transformation
+    let cloudinaryUrl = null;
+    try {
+      const uploadResult = await cloudinary.uploader.upload(image.url, {
+        transformation: [
+          { background: 'black', crop: 'pad' },
+        ],
+        folder: 'shopify_uploads',
+        overwrite: true,
+        resource_type: 'image',
+      });
+      cloudinaryUrl = uploadResult.secure_url;
+    } catch (err) {
+      console.error('Cloudinary upload failed, falling back to original image:', err);
+    }
+
+    // If Cloudinary succeeded, use the processed image
+    if (cloudinaryUrl) {
+      const processedResponse = await fetch(cloudinaryUrl);
+      processedBuffer = Buffer.from(new Uint8Array(await processedResponse.arrayBuffer()));
+    }
+
+    try {
+      const sharpImage = sharp(processedBuffer);
+      const metadata = await sharpImage.metadata();
       width = metadata.width;
       height = metadata.height;
+      // Resize if needed (keep this logic)
       if (width && height && width * height > 20000000) {
-        // Calculate new dimensions to fit within 20MP
         const scale = Math.sqrt(20000000 / (width * height));
         const newWidth = Math.floor(width * scale);
         const newHeight = Math.floor(height * scale);
